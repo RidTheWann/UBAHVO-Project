@@ -106,9 +106,9 @@ jobs:
           - Architecture-specific APKs to avoid bundling native libraries for every CPU architecture into a single large download.
 
           ## Which APK should I install?
-          - `arm64-v8a`: most modern Android phones.
-          - `armeabi-v7a`: older 32-bit ARM devices.
-          - `x86_64` / `x86`: Android emulators and compatible Intel devices.
+          - **arm64-v8a**: most modern Android phones.
+          - **armeabi-v7a**: older 32-bit ARM devices.
+          - **x86_64 / x86**: Android emulators and compatible Intel devices.
           Check your device ABI if unsure.
 
           ## Important limitations
