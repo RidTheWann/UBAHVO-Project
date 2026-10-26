@@ -125,7 +125,7 @@ tasks.named("preBuild").configure {
 }
 
 // Android Gradle Plugin's default APK names expose the generic "app" module name.
-// Rename the ABI-split debug APKs to the public product name after every assembleDebug.
+// Rename the single universal ARM debug APK to the public product name after every assembleDebug.
 val renameUbahvoDebugApks = tasks.register("renameUbahvoDebugApks") {
     group = "build"
     description = "Renames the single universal ARM debug APK to the UBAHVO product name."
