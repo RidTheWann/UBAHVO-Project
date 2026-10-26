@@ -103,16 +103,16 @@ jobs:
           **Pre-release beta — debug-signed, not a production-stable build.**
 
           ## One APK for Android phones
-          Download `UBAHVO-${VERSION}-universal-debug.apk`. It includes both 64-bit ARM (`arm64-v8a`) and 32-bit ARM (`armeabi-v7a`) native runtimes in one file. x86/x86_64 emulators and Intel Android devices are not included. R8 code/resource shrinking and compressed native-library packaging are enabled, but a universal APK is still larger than an APK containing only one ABI.
+          Download UBAHVO-${VERSION}-universal-debug.apk. It includes both 64-bit ARM (arm64-v8a) and 32-bit ARM (armeabi-v7a) native runtimes in one file. x86/x86_64 emulators and Intel Android devices are not included. R8 code/resource shrinking and compressed native-library packaging are enabled, but a universal APK is still larger than an APK containing only one ABI.
 
           ## What's included
           - Kotlin + Jetpack Compose interface with plain-language labels.
           - MP4 video or MP3 audio from supported single-video YouTube URLs.
           - Progress, cancellation, recent output history, open/share actions, and a user-triggered yt-dlp updater with SHA-256 verification.
-          - New output files are saved in `Download/UBAHVO`. Legacy files in `Download/YoutubeConvert` remain where they are; the app attempts to include them in recent history.
+          - New output files are saved in Download/UBAHVO. Legacy files in Download/YoutubeConvert remain where they are; the app attempts to include them in recent history.
 
           ## Important compatibility notes
-          - New application ID: `com.ridthewann.ubahvo`. Android treats this as a separate app from older builds with ID `com.ridthewann.youtubeconvert`; this beta does not update the older installation in place. Test beta.8 before removing the old app, and back up important files first.
+          - New application ID: com.ridthewann.ubahvo. Android treats this as a separate app from older builds with ID com.ridthewann.youtubeconvert; this beta does not update the older installation in place. Test beta.8 before removing the old app, and back up important files first.
           - The current FFmpeg 0.18.1 dependency has a reported 16 KB page-size alignment problem (https://github.com/yausername/youtubedl-android/issues/365). UBAHVO conservatively disables conversion when the device page size is not verified as 4 KB, so this beta cannot convert on every 16 KB-page phone yet.
           - These APKs are built from the Android debug variant and signed with the CI runner's debug key. Later beta builds can require reinstalling.
           - CI validates unit tests, APK assembly, and native runtime presence; it is not a substitute for physical-device MP3/MP4 smoke tests.
