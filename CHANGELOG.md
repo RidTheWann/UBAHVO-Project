@@ -2,6 +2,14 @@
 
 All notable user-facing changes to UBAHVO are documented here.
 
+## 0.1.0-beta.7 — 2026-10-26
+
+- Renamed local debug APK files, CI artifacts, GitHub prerelease assets, release notes, and checksum patterns to UBAHVO.
+- Renamed the Android application class, Compose theme function, and XML theme resource to match the product name while keeping the installed applicationId unchanged.
+- Saved new exports and temporary work files under UBAHVO-branded directories.
+- Kept previously exported files in Download/YoutubeConvert in place and included that legacy location in recent-output history.
+- Kept the current YouTube URL → MP4/MP3 feature scope; universal conversion is still a later stage.
+
 ## 0.1.0-beta.6 — 2026-10-26
 
 - Reworked main workflow wording into clear, numbered steps and simplified the format, link, permission, progress, and output labels.
