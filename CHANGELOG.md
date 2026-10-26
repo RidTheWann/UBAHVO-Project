@@ -3,6 +3,15 @@
 All notable user-facing changes to UBAHVO are documented here.
 
 
+## 0.1.0-beta.10 — 2026-10-27
+
+- Removed the separate metadata-only yt-dlp invocation before downloads; the title now comes from the active download process, reducing duplicated link extraction and time-to-first-progress.
+- Enabled yt-dlp's persistent cache in the app cache directory and made progress UI updates less frequent.
+- Added automatic background yt-dlp support updates (daily on success, six-hour retry after failure); the Save action remains available during automatic checks.
+- Restricted bundled resource locales to Indonesian and English and removed unused Android UI test/debug tooling dependencies to reduce the universal APK footprint.
+- Fixed the CI DEX check to recognize the public reflective constructor after minification.
+- Added regression tests for download-title parsing and automatic update scheduling.
+
 ## 0.1.0-beta.9 — 2026-10-26
 
 - Added R8 keep rules for the yt-dlp/FFmpeg wrappers and Apache Commons Compress classes instantiated through reflection by `ExtraFieldUtils`.
