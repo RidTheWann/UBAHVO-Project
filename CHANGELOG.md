@@ -5,7 +5,7 @@ All notable user-facing changes to UBAHVO are documented here.
 
 ## 0.1.0-beta.9 — 2026-10-26
 
-- Added R8 keep rules for the yt-dlp and FFmpeg wrapper APIs that interact with runtime-loaded/native code.
+- Added R8 keep rules for the yt-dlp/FFmpeg wrappers and Apache Commons Compress classes instantiated through reflection by `ExtraFieldUtils`.
 - Hardened startup so JVM native-linkage or media-engine initialization failures disable conversion without immediately closing the app.
 - Added regression tests for unsupported memory page sizes and media-engine startup failures.
 - Displayed the last initialization stage in the disabled-engine message, making device-specific startup diagnosis more precise.
