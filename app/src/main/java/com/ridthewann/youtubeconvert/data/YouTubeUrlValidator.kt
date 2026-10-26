@@ -6,7 +6,7 @@ import java.util.Locale
 
 /**
  * Accepts a single, standard YouTube video URL only. The validator deliberately rejects
- * look-alike hosts, insecure schemes, playlists without a video, and arbitrary URLs.
+ * look-alike hosts, insecure schemes, authority tricks, non-standard ports, and playlist-only URLs.
  */
 object YouTubeUrlValidator {
     private val supportedHosts = setOf(
@@ -29,6 +29,7 @@ object YouTubeUrlValidator {
         }
 
         if (!uri.scheme.equals("https", ignoreCase = true)) return null
+        if (uri.rawUserInfo != null || (uri.port != -1 && uri.port != 443)) return null
         val host = uri.host?.lowercase(Locale.ROOT)?.removeSuffix(".") ?: return null
         if (host !in supportedHosts) return null
 
