@@ -24,7 +24,7 @@ private val AppColors = darkColorScheme(
 )
 
 @Composable
-fun YoutubeConvertTheme(content: @Composable () -> Unit) {
+fun UbahvoTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = AppColors,
         typography = MaterialTheme.typography,
