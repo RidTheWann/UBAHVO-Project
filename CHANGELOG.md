@@ -2,6 +2,15 @@
 
 All notable user-facing changes to UBAHVO are documented here.
 
+## 0.1.0-beta.8 — 2026-10-26
+
+- Changed the Android application ID and Kotlin namespace/package names to `com.ridthewann.ubahvo`.
+- Replaced four architecture-specific download files with one universal ARM APK containing arm64-v8a and armeabi-v7a.
+- Enabled R8 code shrinking and Android resource shrinking for the beta APK; retained compressed native-library packaging to reduce download size.
+- Saved new exports in Download/UBAHVO and retained legacy-path/legacy-owner support for recent history where Android permits access.
+- Documented that beta.8 installs as a separate app from previous `com.ridthewann.youtubeconvert` builds.
+- Kept the 16 KB memory-page guard; conversion remains disabled on page sizes not verified as 4 KB.
+
 ## 0.1.0-beta.7 — 2026-10-26
 
 - Renamed local debug APK files, CI artifacts, GitHub prerelease assets, release notes, and checksum patterns to UBAHVO.
@@ -10,9 +19,6 @@ All notable user-facing changes to UBAHVO are documented here.
 - Kept previously exported files in Download/YoutubeConvert in place and included that legacy location in recent-output history.
 - Kept the current YouTube URL → MP4/MP3 feature scope; universal conversion is still a later stage.
 
-## 0.1.0-beta.6 — 2026-10-26
-
-- Reworked main workflow wording into clear, numbered steps and simplified the format, link, permission, progress, and output labels.
 - Made the main action reflect the selected result: save video or save audio.
 - Replaced user-facing downloader/initialization errors with actionable plain-language guidance.
 - Allowed choice cards and the main action to grow more naturally with larger system text.
