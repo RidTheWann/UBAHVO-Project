@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "YoutubeConvert"
+rootProject.name = "UBAHVO"
 include(":app")
