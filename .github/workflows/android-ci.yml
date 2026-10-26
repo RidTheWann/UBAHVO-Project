@@ -96,6 +96,18 @@ jobs:
             echo "Missing or empty universal APK: $APK" >&2
             exit 1
           fi
+
+          APK_SIZE_BYTES="$(stat -c '%s' "$APK")"
+          echo "Universal APK size: $APK_SIZE_BYTES bytes (target: less than 100,000,000 bytes)."
+          {
+            echo "### Universal APK size"
+            echo "- File: `$APK`"
+            echo "- Size: $APK_SIZE_BYTES bytes"
+            echo "- Target: under 100,000,000 bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if (( APK_SIZE_BYTES >= 100000000 )); then
+            echo "::warning title=Universal APK size::The universal APK is $APK_SIZE_BYTES bytes, above the 100 MB download target."
+          fi
           for ABI in arm64-v8a armeabi-v7a; do
             if ! unzip -Z1 "$APK" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
               echo "Universal APK is missing the C++ runtime for $ABI." >&2
