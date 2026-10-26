@@ -2,13 +2,14 @@
 
 Native Android app built with Kotlin and Jetpack Compose. It accepts a YouTube video URL, lets the user choose MP4 video or MP3 audio, and saves the result to **Downloads/YoutubeConvert**.
 
-**Current status: beta.** This project prioritizes transparent failure handling and responsible use. The current beta is not a production-signed stable release.
+**Current status: beta (0.1.0-beta.4).** This project prioritizes transparent failure handling and responsible use. The current beta is not a production-signed stable release.
 
 ## Features
 
 - Kotlin + Jetpack Compose, Material 3, ViewModel and StateFlow.
 - yt-dlp through the Android wrapper, with FFmpeg support for audio extraction and media remuxing.
 - MP4 quality selection, MP3 audio extraction, progress, cancellation, and Android share-sheet URL intake.
+- Recent conversion history for the five latest app-owned outputs, with file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore. No broad storage permission is requested.
 - HTTPS YouTube URL validation and unit tests.
 - User-triggered update of the official stable yt-dlp binary, validating the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before atomic installation, with status and errors shown in the UI.
@@ -16,7 +17,7 @@ Native Android app built with Kotlin and Jetpack Compose. It accepts a YouTube v
 
 ## Latest beta
 
-The `0.1.0-beta.3` update hardens the manual stable yt-dlp updater with on-disk SHA-256 verification of both the staged and final installed script, plus rollback protection. Use the `Perbarui` control in the app when network access is available; the updater accepts only the official GitHub release asset and verifies its published SHA-256 digest before atomically replacing the bundled script. It does not silently replace the downloader in the background.
+The `0.1.0-beta.4` update adds recent conversion history for app-owned files in `Downloads/YoutubeConvert`. The `0.1.0-beta.3` update hardens the manual stable yt-dlp updater with on-disk SHA-256 verification of the staged and final installed script, plus rollback protection. The `0.1.0-beta.2` update introduced the manual stable yt-dlp updater. Use the `Perbarui` control when network access is available; the updater accepts only the official GitHub release asset and verifies its published SHA-256 digest before atomically replacing the bundled script. Updates are user-triggered, not silent background replacements.
 
 Use the [GitHub Releases page](https://github.com/RidTheWann/Youtube-Convert/releases) to get an APK and the SHA-256 checksum. Choose the APK matching your device ABI; **arm64-v8a is the typical choice for modern Android phones**. Architecture-specific APKs avoid the large download size of a universal APK.
 

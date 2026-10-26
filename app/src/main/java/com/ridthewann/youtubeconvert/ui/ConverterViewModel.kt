@@ -8,6 +8,7 @@ import com.ridthewann.youtubeconvert.YoutubeConvertApplication
 import com.ridthewann.youtubeconvert.core.OutputMode
 import com.ridthewann.youtubeconvert.core.VideoQuality
 import com.ridthewann.youtubeconvert.data.DownloadRepository
+import com.ridthewann.youtubeconvert.data.RecentOutput
 import com.ridthewann.youtubeconvert.data.YouTubeUrlValidator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -36,7 +37,10 @@ data class ConverterUiState(
     val engineReady: Boolean = false,
     val isUpdatingYtDlp: Boolean = false,
     val ytdlpVersion: String? = null,
-    val ytdlpUpdateMessage: String? = null
+    val ytdlpUpdateMessage: String? = null,
+    val recentOutputs: List<RecentOutput> = emptyList(),
+    val isRefreshingHistory: Boolean = false,
+    val recentOutputsError: String? = null
 )
 
 class ConverterViewModel(
@@ -58,6 +62,45 @@ class ConverterViewModel(
 
     private var activeProcessId: String? = null
     private var activeJob: Job? = null
+    private var historyRefreshJob: Job? = null
+    private var refreshHistoryAgain = false
+
+    /**
+     * Load recent app-owned MediaStore outputs. If a refresh is requested while one is running,
+     * queue another pass so a just-completed conversion is reflected in the list.
+     */
+    fun refreshRecentOutputs() {
+        if (historyRefreshJob?.isActive == true) {
+            refreshHistoryAgain = true
+            return
+        }
+
+        historyRefreshJob = viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshingHistory = true, recentOutputsError = null) }
+            try {
+                do {
+                    refreshHistoryAgain = false
+                    try {
+                        val outputs = repository.recentOutputs()
+                        _uiState.update {
+                            it.copy(recentOutputs = outputs, recentOutputsError = null)
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        _uiState.update {
+                            it.copy(
+                                recentOutputsError = "Riwayat tidak dapat dimuat. Periksa folder Downloads/YoutubeConvert."
+                            )
+                        }
+                    }
+                } while (refreshHistoryAgain)
+            } finally {
+                _uiState.update { it.copy(isRefreshingHistory = false) }
+                historyRefreshJob = null
+            }
+        }
+    }
 
     fun onUrlChanged(value: String) {
         _uiState.update {
@@ -236,6 +279,7 @@ class ConverterViewModel(
                         errorMessage = null
                     )
                 }
+                refreshRecentOutputs()
             } catch (cancelled: CancellationException) {
                 _uiState.update {
                     it.copy(

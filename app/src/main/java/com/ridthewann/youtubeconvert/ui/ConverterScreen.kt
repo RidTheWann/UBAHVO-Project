@@ -35,6 +35,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -55,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ridthewann.youtubeconvert.core.OutputMode
 import com.ridthewann.youtubeconvert.core.VideoQuality
+import com.ridthewann.youtubeconvert.data.RecentOutput
+import com.ridthewann.youtubeconvert.data.RecentOutputFormatting
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -461,12 +464,143 @@ fun ConverterScreen(
                 }
             }
 
+            RecentOutputsCard(
+                outputs = state.recentOutputs,
+                isRefreshing = state.isRefreshingHistory,
+                errorMessage = state.recentOutputsError,
+                onRefresh = viewModel::refreshRecentOutputs,
+                onOpenOutput = onOpenOutput,
+                onShareOutput = onShareOutput
+            )
+
             Text(
                 "YT CONVERT • RIDTHEWANN",
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun RecentOutputsCard(
+    outputs: List<RecentOutput>,
+    isRefreshing: Boolean,
+    errorMessage: String?,
+    onRefresh: () -> Unit,
+    onOpenOutput: (Uri, String) -> Unit,
+    onShareOutput: (Uri, String) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        "Riwayat konversi",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Lima hasil terbaru di Downloads/YoutubeConvert",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedButton(
+                    onClick = onRefresh,
+                    enabled = !isRefreshing,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (isRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(15.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        androidx.compose.material3.Icon(Icons.Default.Refresh, contentDescription = null)
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (isRefreshing) "Memuat" else "Muat ulang")
+                }
+            }
+
+            if (errorMessage != null) {
+                Text(
+                    errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            if (outputs.isEmpty()) {
+                Text(
+                    when {
+                        isRefreshing -> "Memuat riwayat hasil…"
+                        errorMessage != null -> "Riwayat belum tersedia."
+                        else -> "Belum ada hasil konversi. File yang selesai akan muncul di sini."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                outputs.forEachIndexed { index, output ->
+                    if (index > 0) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                output.displayName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                "${RecentOutputFormatting.formatSize(output.sizeBytes)} • " +
+                                    RecentOutputFormatting.formatDateAdded(output.dateAddedSeconds),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        IconButton(onClick = { onOpenOutput(output.uri, output.mimeType) }) {
+                            androidx.compose.material3.Icon(
+                                Icons.Default.OpenInNew,
+                                contentDescription = "Buka ${output.displayName}"
+                            )
+                        }
+                        IconButton(onClick = { onShareOutput(output.uri, output.mimeType) }) {
+                            androidx.compose.material3.Icon(
+                                Icons.Default.Share,
+                                contentDescription = "Bagikan ${output.displayName}"
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
