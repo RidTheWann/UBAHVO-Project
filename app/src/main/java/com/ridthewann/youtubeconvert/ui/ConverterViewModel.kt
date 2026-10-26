@@ -32,7 +32,11 @@ data class ConverterUiState(
     val outputUri: Uri? = null,
     val outputName: String? = null,
     val outputMimeType: String = "video/mp4",
-    val lastLogLine: String? = null
+    val lastLogLine: String? = null,
+    val engineReady: Boolean = false,
+    val isUpdatingYtDlp: Boolean = false,
+    val ytdlpVersion: String? = null,
+    val ytdlpUpdateMessage: String? = null
 )
 
 class ConverterViewModel(
@@ -46,7 +50,8 @@ class ConverterViewModel(
             } else {
                 "Mesin media belum siap."
             },
-            errorMessage = application.engineError
+            errorMessage = application.engineError,
+            engineReady = application.engineReady
         )
     )
     val uiState: StateFlow<ConverterUiState> = _uiState.asStateFlow()
@@ -86,9 +91,67 @@ class ConverterViewModel(
         _uiState.update { it.copy(rightsConfirmed = confirmed) }
     }
 
+    fun updateYtDlp() {
+        val snapshot = _uiState.value
+        if (snapshot.isBusy || snapshot.isUpdatingYtDlp) return
+
+        if (!application.engineReady) {
+            _uiState.update {
+                it.copy(
+                    ytdlpUpdateMessage = application.engineError
+                        ?: "Mesin media belum siap; pembaruan yt-dlp tidak dapat dijalankan."
+                )
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isUpdatingYtDlp = true,
+                    ytdlpUpdateMessage = "Memeriksa pembaruan stabil resmi yt-dlp…",
+                    errorMessage = null
+                )
+            }
+
+            try {
+                val result = repository.updateYtDlp()
+                val version = result.versionName?.takeIf { it.isNotBlank() }
+                    ?: result.version?.takeIf { it.isNotBlank() }
+                    ?: "versi stabil terbaru"
+
+                _uiState.update {
+                    it.copy(
+                        ytdlpVersion = version,
+                        ytdlpUpdateMessage = if (result.updated) {
+                            "yt-dlp berhasil diperbarui ke $version."
+                        } else {
+                            "yt-dlp sudah menggunakan versi stabil terbaru ($version)."
+                        }
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                val detail = error.message?.takeIf { it.isNotBlank() }?.take(140)
+                _uiState.update {
+                    it.copy(
+                        ytdlpUpdateMessage = if (detail == null) {
+                            "Pembaruan yt-dlp gagal. Periksa koneksi internet lalu coba lagi."
+                        } else {
+                            "Pembaruan yt-dlp gagal. Periksa koneksi internet lalu coba lagi. Detail: $detail"
+                        }
+                    )
+                }
+            } finally {
+                _uiState.update { it.copy(isUpdatingYtDlp = false) }
+            }
+        }
+    }
+
     fun start() {
         val snapshot = _uiState.value
-        if (snapshot.isBusy) return
+        if (snapshot.isBusy || snapshot.isUpdatingYtDlp) return
 
         if (!application.engineReady) {
             _uiState.update {

@@ -16,8 +16,8 @@ android {
         applicationId = "com.ridthewann.youtubeconvert"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-beta.1"
+        versionCode = 2
+        versionName = "0.1.0-beta.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -134,6 +134,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+
+    // Keep Jackson modules aligned and current; updater code parses untrusted remote release metadata.
+    implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
+    implementation("com.fasterxml.jackson.core:jackson-databind")
 
     // yt-dlp runtime + FFmpeg binaries. Review all upstream licenses before redistribution.
     implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")

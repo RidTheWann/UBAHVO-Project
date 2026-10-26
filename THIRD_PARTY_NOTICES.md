@@ -24,6 +24,7 @@ This application bundles media tooling through Gradle dependencies. Review the l
 ## yt-dlp
 
 - Upstream: https://github.com/yt-dlp/yt-dlp
+- The application updater fetches the latest official stable release through the GitHub Releases API and verifies the API-provided SHA-256 asset digest before installing the script.
 - The upstream repository and bundled/release artifacts may have different license compositions. Consult its current license and third-party notices.
 
 This notice is not legal advice. The application source is licensed under GPL-3.0-only; third-party components remain governed by their own applicable licenses.
