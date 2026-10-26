@@ -16,8 +16,8 @@ android {
         applicationId = "com.ridthewann.youtubeconvert"
         minSdk = 29
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.1.0-beta.6"
+        versionCode = 7
+        versionName = "0.1.0-beta.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -117,6 +117,38 @@ val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
 
 tasks.named("preBuild").configure {
     dependsOn(prepareNdkCppRuntime)
+}
+
+// Android Gradle Plugin's default APK names expose the generic "app" module name.
+// Rename the ABI-split debug APKs to the public product name after every assembleDebug.
+val renameUbahvoDebugApks = tasks.register("renameUbahvoDebugApks") {
+    group = "build"
+    description = "Renames ABI-specific debug APKs to the UBAHVO product name."
+
+    doLast {
+        val apkDirectory = layout.buildDirectory.dir("outputs/apk/debug").get().asFile
+        val appVersion = android.defaultConfig.versionName
+            ?: throw GradleException("Could not read the UBAHVO versionName.")
+
+        listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86").forEach { abi ->
+            val source = File(apkDirectory, "app-" + abi + "-debug.apk")
+            val destination = File(apkDirectory, "UBAHVO-" + appVersion + "-" + abi + "-debug.apk")
+
+            if (!source.isFile || source.length() <= 0L) {
+                throw GradleException("Missing or empty ABI APK before branding rename: " + source.absolutePath)
+            }
+            if (destination.exists() && !destination.delete()) {
+                throw GradleException("Could not replace previous branded APK: " + destination.absolutePath)
+            }
+            if (!source.renameTo(destination)) {
+                throw GradleException("Could not rename APK to UBAHVO filename: " + destination.absolutePath)
+            }
+        }
+    }
+}
+
+tasks.named("assembleDebug").configure {
+    finalizedBy(renameUbahvoDebugApks)
 }
 
 dependencies {
