@@ -135,8 +135,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
-    // The updater parses GitHub release metadata directly; do not rely on a transitive compile dependency.
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.11.1")
+    // Keep Jackson modules aligned and current; updater code parses untrusted remote release metadata.
+    implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
+    implementation("com.fasterxml.jackson.core:jackson-databind")
 
     // yt-dlp runtime + FFmpeg binaries. Review all upstream licenses before redistribution.
     implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
