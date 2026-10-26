@@ -175,15 +175,10 @@ class ConverterViewModel(
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (error: Exception) {
-                val detail = error.message?.takeIf { it.isNotBlank() }?.take(140)
+            } catch (_: Exception) {
                 _uiState.update {
                     it.copy(
-                        ytdlpUpdateMessage = if (detail == null) {
-                            "Pembaruan gagal. Periksa koneksi internet lalu coba lagi."
-                        } else {
-                            "Pembaruan gagal. Periksa koneksi internet lalu coba lagi."
-                        }
+                        ytdlpUpdateMessage = "Pembaruan gagal. Periksa koneksi internet lalu coba lagi."
                     )
                 }
             } finally {
