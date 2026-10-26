@@ -2,7 +2,7 @@
 
 **UBAHVO** is a native Android app for converting supported single-video YouTube links into MP4 video or MP3 audio. The universal APK covers 32-bit and 64-bit ARM phones; general local-file conversion is planned for a later stage.
 
-**Current status: beta (`0.1.0-beta.9`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.10`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
@@ -12,16 +12,16 @@
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
 - HTTPS YouTube URL validation and unit tests.
-- User-triggered updates for the official stable yt-dlp script. The updater validates the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before installation, then verifies the staged and installed files and protects against rollback.
+- Automatic background updates for the official stable yt-dlp script, plus a clear manual “Cek sekarang” action. The updater validates the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before installation, then verifies the staged and installed files and protects against rollback.
 - CI tests, builds the universal ARM APK, checks native C++ runtime packaging, and publishes beta prereleases.
 
 ## Download one universal APK
 
 Visit the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and download the single universal APK plus its SHA-256 checksum. The APK includes both `arm64-v8a` and `armeabi-v7a`, covering 64-bit and 32-bit ARM Android phones on Android 10 (API 29) or later. x86/x86_64 emulators and Intel Android devices are excluded.
 
-Download filename: `UBAHVO-0.1.0-beta.9-universal-debug.apk`.
+Download filename: `UBAHVO-0.1.0-beta.10-universal-debug.apk`.
 
-R8 code shrinking, resource shrinking, and compressed native-library packaging are enabled to reduce the download size. A universal APK still has to include both ARM variants, so it will be larger than a single-ABI APK.
+R8 code shrinking, resource shrinking, and Indonesian/English resource filtering are enabled. Unused Android UI test/debug tooling is excluded from the downloadable APK. A universal APK still includes both ARM variants and the bundled Python/FFmpeg runtimes, so its download size is inherently higher than a single-ABI package.
 
 The APK is built from the Android debug variant and is intended for early testing, not as a production-signed release. The signing key is generated on the GitHub runner, so later betas can require reinstalling.
 
@@ -45,7 +45,7 @@ Open the repository root in Android Studio and install Android SDK Platform 36, 
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 ```
 
-The one universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.9-universal-debug.apk`.
+The one universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.10-universal-debug.apk`.
 
 ## Product roadmap
 
