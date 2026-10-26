@@ -99,13 +99,13 @@ fun ConverterScreen(
                             verticalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
                             Text(
-                                "Mesin yt-dlp",
+                                "Dukungan tautan video",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
                                 state.ytdlpVersion?.let { "Versi tercatat: $it" }
-                                    ?: "Periksa pembaruan stabil resmi agar dukungan situs tetap mutakhir.",
+                                    ?: "Jika tautan tidak dapat diproses, coba perbarui dukungan.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -136,7 +136,7 @@ fun ConverterScreen(
                         Text(
                             updateMessage,
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (updateMessage.startsWith("Pembaruan yt-dlp gagal")) {
+                            color = if (updateMessage.startsWith("Pembaruan gagal")) {
                                 MaterialTheme.colorScheme.error
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -145,7 +145,7 @@ fun ConverterScreen(
                     }
                     if (!state.engineReady) {
                         Text(
-                            "Mesin media tidak siap. Konversi dan pembaruan dinonaktifkan.",
+                            "Fitur simpan belum tersedia di perangkat ini.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -155,9 +155,9 @@ fun ConverterScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "PILIH FORMAT",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.secondary,
+                    text = "1. Pilih hasil yang kamu inginkan",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
                 Row(
@@ -166,8 +166,8 @@ fun ConverterScreen(
                 ) {
                     FormatCard(
                         modifier = Modifier.weight(1f),
-                        title = "Video MP4",
-                        subtitle = "Video + audio",
+                        title = "Video (MP4)",
+                        subtitle = "Video dengan suara",
                         selected = state.mode == OutputMode.MP4,
                         enabled = !state.isBusy && !state.isUpdatingYtDlp,
                         imageVector = Icons.Default.Movie,
@@ -175,8 +175,8 @@ fun ConverterScreen(
                     )
                     FormatCard(
                         modifier = Modifier.weight(1f),
-                        title = "Audio MP3",
-                        subtitle = "Audio saja",
+                        title = "Audio (MP3)",
+                        subtitle = "Suara saja",
                         selected = state.mode == OutputMode.MP3,
                         enabled = !state.isBusy && !state.isUpdatingYtDlp,
                         imageVector = Icons.Default.AudioFile,
@@ -202,7 +202,7 @@ fun ConverterScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Tautan YouTube",
+                            "2. Tempel tautan video",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -213,14 +213,14 @@ fun ConverterScreen(
                         onValueChange = viewModel::onUrlChanged,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !state.isBusy && !state.isUpdatingYtDlp,
-                        label = { Text("Tempel URL video") },
-                        placeholder = { Text("https://youtu.be/…") },
+                        label = { Text("Tautan YouTube") },
+                        placeholder = { Text("Tempel tautan di sini") },
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp)
                     )
 
                     Text(
-                        text = "Mendukung tautan video, Shorts, live yang tersedia, dan tautan youtu.be. Playlist tidak diproses.",
+                        text = "Buka YouTube, pilih Bagikan, lalu pilih UBAHVO. Kamu juga bisa menempel tautan di sini. Satu video setiap kali; playlist tidak didukung.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -229,7 +229,7 @@ fun ConverterScreen(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Text(
                             "Kualitas video",
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                         FlowRow(
@@ -241,11 +241,16 @@ fun ConverterScreen(
                                 FilterChip(
                                     selected = state.quality == quality,
                                     onClick = { viewModel.setQuality(quality) },
-                                    enabled = !state.isBusy,
+                                    enabled = !state.isBusy && !state.isUpdatingYtDlp,
                                     label = { Text(quality.label) }
                                 )
                             }
                         }
+                        Text(
+                            "Kualitas lebih tinggi biasanya menghasilkan file yang lebih besar.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -274,12 +279,12 @@ fun ConverterScreen(
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Text(
-                            "Saya memiliki hak atau izin untuk mengunduh konten ini",
+                            "Saya punya hak atau izin untuk menyimpan konten ini",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "Jangan gunakan untuk melewati DRM, konten privat/berbayar, atau mengunduh materi tanpa izin. Patuhi hukum dan ketentuan layanan sumber.",
+                            "Jangan simpan video privat atau berbayar, atau konten yang tidak boleh kamu unduh. UBAHVO tidak membuka pembatasan akses.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -322,7 +327,7 @@ fun ConverterScreen(
                         !state.isUpdatingYtDlp && state.url.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
+                        .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
@@ -335,11 +340,11 @@ fun ConverterScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text("Sedang memproses…")
+                        Text(if (state.mode == OutputMode.MP4) "Sedang menyimpan video…" else "Sedang menyimpan audio…")
                     } else {
                         androidx.compose.material3.Icon(Icons.Default.Download, contentDescription = null)
                         Spacer(Modifier.width(9.dp))
-                        Text("Mulai konversi", fontWeight = FontWeight.Bold)
+                        Text(if (state.mode == OutputMode.MP4) "Simpan video" else "Simpan audio", fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -349,7 +354,7 @@ fun ConverterScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text("Batalkan proses")
+                        Text("Batalkan")
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -373,7 +378,7 @@ fun ConverterScreen(
                         )
                         if (state.etaSeconds > 0) {
                             Text(
-                                "Perkiraan sisa ${formatEta(state.etaSeconds)}",
+                                "Perkiraan waktu tersisa: ${formatEta(state.etaSeconds)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -634,7 +639,7 @@ private fun Header() {
                 letterSpacing = 0.4.sp
             )
             Text(
-                "Konversi media langsung di Android",
+                "Video YouTube jadi MP4 atau MP3",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
