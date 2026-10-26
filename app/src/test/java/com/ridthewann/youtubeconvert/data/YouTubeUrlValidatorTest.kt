@@ -24,8 +24,24 @@ class YouTubeUrlValidatorTest {
     }
 
     @Test
+    fun acceptsExplicitDefaultHttpsPort() {
+        val url = "https://youtube.com:443/watch?v=abcdefghijk"
+        assertEquals(url, YouTubeUrlValidator.normalize(url))
+    }
+
+    @Test
     fun rejectsLookAlikeHost() {
         assertNull(YouTubeUrlValidator.normalize("https://youtube.com.example.org/watch?v=abcdefghijk"))
+    }
+
+    @Test
+    fun rejectsUserInfoAuthorityTrick() {
+        assertNull(YouTubeUrlValidator.normalize("https://attacker@youtube.com/watch?v=abcdefghijk"))
+    }
+
+    @Test
+    fun rejectsNonStandardPort() {
+        assertNull(YouTubeUrlValidator.normalize("https://youtube.com:8443/watch?v=abcdefghijk"))
     }
 
     @Test
