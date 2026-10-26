@@ -8,6 +8,7 @@ All notable user-facing changes to UBAHVO are documented here.
 - Added R8 keep rules for the yt-dlp and FFmpeg wrapper APIs that interact with runtime-loaded/native code.
 - Hardened startup so JVM native-linkage or media-engine initialization failures disable conversion without immediately closing the app.
 - Added regression tests for unsupported memory page sizes and media-engine startup failures.
+- Displayed the last initialization stage in the disabled-engine message, making device-specific startup diagnosis more precise.
 - Bumped Android versionCode to 9; physical-device smoke testing is still required.
 
 
