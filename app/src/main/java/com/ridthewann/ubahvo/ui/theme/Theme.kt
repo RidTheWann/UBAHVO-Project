@@ -1,4 +1,4 @@
-package com.ridthewann.youtubeconvert.ui.theme
+package com.ridthewann.ubahvo.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme

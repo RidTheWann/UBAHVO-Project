@@ -1,4 +1,4 @@
-package com.ridthewann.youtubeconvert.core
+package com.ridthewann.ubahvo.core
 
 enum class OutputMode(
     val label: String,

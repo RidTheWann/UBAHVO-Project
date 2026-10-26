@@ -1,4 +1,4 @@
-package com.ridthewann.youtubeconvert.ui
+package com.ridthewann.ubahvo.ui
 
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
@@ -55,10 +55,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ridthewann.youtubeconvert.core.OutputMode
-import com.ridthewann.youtubeconvert.core.VideoQuality
-import com.ridthewann.youtubeconvert.data.RecentOutput
-import com.ridthewann.youtubeconvert.data.RecentOutputFormatting
+import com.ridthewann.ubahvo.core.OutputMode
+import com.ridthewann.ubahvo.core.VideoQuality
+import com.ridthewann.ubahvo.data.RecentOutput
+import com.ridthewann.ubahvo.data.RecentOutputFormatting
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable

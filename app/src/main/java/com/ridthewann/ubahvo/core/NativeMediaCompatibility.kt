@@ -1,4 +1,4 @@
-package com.ridthewann.youtubeconvert.core
+package com.ridthewann.ubahvo.core
 
 /**
  * Conservative guard for the bundled FFmpeg runtime.

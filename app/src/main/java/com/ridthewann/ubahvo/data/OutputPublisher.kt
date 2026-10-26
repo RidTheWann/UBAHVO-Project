@@ -1,4 +1,4 @@
-package com.ridthewann.youtubeconvert.data
+package com.ridthewann.ubahvo.data
 
 import android.content.ContentUris
 import android.content.ContentValues
@@ -84,11 +84,13 @@ class OutputPublisher(private val context: Context) {
         }
         val selection = pathSelection +
             " AND ${MediaStore.MediaColumns.IS_PENDING} = 0 AND " +
-            "${MediaStore.MediaColumns.OWNER_PACKAGE_NAME} = ?"
+            "${MediaStore.MediaColumns.OWNER_PACKAGE_NAME} IN (?, ?)"
         val selectionArgs = relativePaths.flatMap { path ->
             listOf(path, "$path/", "$path/%")
         }.toMutableList().apply {
             add(context.packageName)
+            // The package ID changed in beta.8; keep old-package exports discoverable where Android permits.
+            add(LEGACY_APPLICATION_ID)
         }.toTypedArray()
         val sortOrder = "${MediaStore.MediaColumns.DATE_ADDED} DESC, " +
             "${MediaStore.MediaColumns._ID} DESC"
@@ -153,6 +155,7 @@ class OutputPublisher(private val context: Context) {
     companion object {
         private const val DEFAULT_HISTORY_LIMIT = 5
         private const val MAX_HISTORY_LIMIT = 20
+        private const val LEGACY_APPLICATION_ID = "com.ridthewann.youtubeconvert"
     }
 }
 

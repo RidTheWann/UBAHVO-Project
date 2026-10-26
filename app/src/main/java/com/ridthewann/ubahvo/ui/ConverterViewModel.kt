@@ -1,15 +1,15 @@
-package com.ridthewann.youtubeconvert.ui
+package com.ridthewann.ubahvo.ui
 
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.ridthewann.youtubeconvert.UbahvoApplication
-import com.ridthewann.youtubeconvert.core.OutputMode
-import com.ridthewann.youtubeconvert.core.VideoQuality
-import com.ridthewann.youtubeconvert.data.DownloadRepository
-import com.ridthewann.youtubeconvert.data.RecentOutput
-import com.ridthewann.youtubeconvert.data.YouTubeUrlValidator
+import com.ridthewann.ubahvo.UbahvoApplication
+import com.ridthewann.ubahvo.core.OutputMode
+import com.ridthewann.ubahvo.core.VideoQuality
+import com.ridthewann.ubahvo.data.DownloadRepository
+import com.ridthewann.ubahvo.data.RecentOutput
+import com.ridthewann.ubahvo.data.YouTubeUrlValidator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
