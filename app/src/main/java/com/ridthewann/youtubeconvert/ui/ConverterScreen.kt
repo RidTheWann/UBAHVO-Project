@@ -440,7 +440,7 @@ fun ConverterScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            "Disimpan di: Download/YoutubeConvert",
+                            "Disimpan di: Download/UBAHVO",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -523,7 +523,7 @@ private fun RecentOutputsCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "Lima hasil terbaru di Downloads/YoutubeConvert",
+                        "Lima hasil terakhir, termasuk file dari folder lama",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
