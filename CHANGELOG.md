@@ -1,6 +1,13 @@
 # Changelog
 
-All notable user-facing changes to Youtube Convert are documented here.
+All notable user-facing changes to UBAHVO are documented here.
+
+## 0.1.0-beta.5 — 2026-10-26
+
+- Introduced the UBAHVO product name, in-app header branding, developer credit, and a non-YouTube-specific launcher mark.
+- Preserved the Android applicationId, Kotlin package names, and existing Downloads/YoutubeConvert output folder to protect upgrade and file compatibility.
+- Kept the current feature scope explicit: supported YouTube links to MP4/MP3 only; universal conversion is planned for a later stage.
+
 
 ## 0.1.0-beta.4 — 2026-10-26
 
