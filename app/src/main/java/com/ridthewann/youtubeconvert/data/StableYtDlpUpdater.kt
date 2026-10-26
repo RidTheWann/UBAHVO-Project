@@ -72,7 +72,7 @@ internal object StableYtDlpReleaseVerifier {
         }
 
         val size = asset.path("size").asLong(-1L)
-        if (size <= 0L || size > MAX_ASSET_BYTES) {
+        if (size <= 0L || size > MAX_ASSET_BYTES.toLong()) {
             throw IOException("The published yt-dlp asset has an unexpected size.")
         }
 
@@ -254,7 +254,7 @@ internal class StableYtDlpUpdater(context: Context) {
                 }
 
                 val contentLength = connection.contentLengthLong
-                if (contentLength > maxBytes) {
+                if (contentLength > maxBytes.toLong()) {
                     throw IOException("The yt-dlp update response exceeded the allowed size.")
                 }
 
