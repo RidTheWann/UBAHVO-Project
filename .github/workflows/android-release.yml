@@ -122,6 +122,13 @@ jobs:
             echo "Missing or empty universal APK: $SOURCE" >&2
             exit 1
           fi
+
+          APK_SIZE_BYTES="$(stat -c '%s' "$SOURCE")"
+          APK_SIZE_MB="$(awk -v size="$APK_SIZE_BYTES" 'BEGIN { printf "%.1f", size / 1000000 }')"
+          echo "Universal APK download size: $APK_SIZE_BYTES bytes (~$APK_SIZE_MB MB decimal)."
+          if (( APK_SIZE_BYTES >= 100000000 )); then
+            echo "::warning title=Universal APK size::The universal APK is $APK_SIZE_BYTES bytes, above the 100 MB download target."
+          fi
           for ABI in arm64-v8a armeabi-v7a; do
             if ! unzip -Z1 "$SOURCE" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
               echo "Universal APK is missing the C++ runtime for $ABI." >&2
@@ -159,13 +166,15 @@ jobs:
 
           **Pre-release beta — debug-signed, not a production-stable build.**
 
+          **Download size:** approximately ${APK_SIZE_MB} MB (${APK_SIZE_BYTES} bytes; decimal units).
+
           ## One APK for Android phones
           Download UBAHVO-${VERSION}-universal-debug.apk. It includes both 64-bit ARM (arm64-v8a) and 32-bit ARM (armeabi-v7a) native runtimes in one file. x86/x86_64 emulators and Intel Android devices are not included. R8 code/resource shrinking and compressed native-library packaging are enabled, but a universal APK is still larger than an APK containing only one ABI.
 
           ## What's included
           - Kotlin + Jetpack Compose interface with plain-language labels.
           - MP4 video or MP3 audio from supported single-video YouTube URLs.
-          - Progress, cancellation, recent output history, open/share actions, and a user-triggered yt-dlp updater with SHA-256 verification.
+          - Progress, cancellation, recent output history, open/share actions, automatic background yt-dlp support updates, and a manual “Cek sekarang” action. Updates require HTTPS, approved GitHub hosts, and SHA-256 verification.
           - New output files are saved in Download/UBAHVO. Legacy files in Download/YoutubeConvert remain where they are; the app attempts to include them in recent history.
 
           ## Important compatibility notes
