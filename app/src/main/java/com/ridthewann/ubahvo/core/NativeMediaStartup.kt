@@ -8,31 +8,39 @@ object NativeMediaStartup {
     data class Result(
         val engineReady: Boolean,
         val errorMessage: String? = null,
-        val failure: Throwable? = null
+        val failure: Throwable? = null,
+        val failureStage: String? = null
     )
 
-    fun initialize(pageSizeBytes: Long?, initializeEngine: () -> Unit): Result {
+    fun initialize(
+        pageSizeBytes: Long?,
+        initializeEngine: (setStage: (String) -> Unit) -> Unit
+    ): Result {
         if (!NativeMediaCompatibility.supportsBundledFfmpeg(pageSizeBytes)) {
             return Result(
                 engineReady = false,
-                errorMessage = NativeMediaCompatibility.userFacingMessage(pageSizeBytes)
+                errorMessage = NativeMediaCompatibility.userFacingMessage(pageSizeBytes),
+                failureStage = "Pemeriksaan ukuran halaman memori"
             )
         }
 
+        var stage = "Persiapan komponen media"
         return try {
-            initializeEngine()
+            initializeEngine { currentStage -> stage = currentStage }
             Result(engineReady = true)
         } catch (error: LinkageError) {
             Result(
                 engineReady = false,
-                errorMessage = LINKAGE_FAILURE_MESSAGE,
-                failure = error
+                errorMessage = "$LINKAGE_FAILURE_MESSAGE\nTahap terakhir: $stage.",
+                failure = error,
+                failureStage = stage
             )
         } catch (error: Exception) {
             Result(
                 engineReady = false,
-                errorMessage = INITIALIZATION_FAILURE_MESSAGE,
-                failure = error
+                errorMessage = "$INITIALIZATION_FAILURE_MESSAGE\nTahap terakhir: $stage.",
+                failure = error,
+                failureStage = stage
             )
         }
     }
