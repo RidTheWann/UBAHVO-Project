@@ -1,5 +1,6 @@
 package com.ridthewann.ubahvo.core
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -21,27 +22,32 @@ class NativeMediaStartupTest {
         assertNotNull(result.errorMessage)
         assertTrue(result.errorMessage!!.contains("16 KB"))
         assertNull(result.failure)
+        assertEquals("Pemeriksaan ukuran halaman memori", result.failureStage)
     }
 
     @Test
     fun successfulInitializationEnablesEngine() {
-        val result = NativeMediaStartup.initialize(4096L) { }
+        val result = NativeMediaStartup.initialize(4096L) { _ -> }
 
         assertTrue(result.engineReady)
         assertNull(result.errorMessage)
         assertNull(result.failure)
+        assertNull(result.failureStage)
     }
 
     @Test
-    fun linkageErrorIsReportedInsteadOfEscapingIntoApplicationStartup() {
+    fun linkageErrorIsReportedWithTheFailingStage() {
         val failure = NoClassDefFoundError("test-missing-native-entry")
 
-        val result = NativeMediaStartup.initialize(4096L) {
+        val result = NativeMediaStartup.initialize(4096L) { setStage ->
+            setStage("Inisialisasi FFmpeg")
             throw failure
         }
 
         assertFalse(result.engineReady)
         assertTrue(result.errorMessage!!.contains("Aplikasi tetap bisa dibuka"))
+        assertTrue(result.errorMessage!!.contains("Tahap terakhir: Inisialisasi FFmpeg"))
+        assertEquals("Inisialisasi FFmpeg", result.failureStage)
         assertSame(failure, result.failure)
     }
 
@@ -50,11 +56,14 @@ class NativeMediaStartupTest {
         val failure = IllegalStateException("test-init-failure")
 
         val result = NativeMediaStartup.initialize(4096L) {
+            it("Inisialisasi yt-dlp")
             throw failure
         }
 
         assertFalse(result.engineReady)
         assertTrue(result.errorMessage!!.contains("Aplikasi tetap bisa dibuka"))
+        assertTrue(result.errorMessage!!.contains("Tahap terakhir: Inisialisasi yt-dlp"))
+        assertEquals("Inisialisasi yt-dlp", result.failureStage)
         assertSame(failure, result.failure)
     }
 }
