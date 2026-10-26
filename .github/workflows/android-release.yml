@@ -1,0 +1,120 @@
+name: Android Beta Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ""
+
+      - name: Install SDK Platform 36
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          yes | sdkmanager --licenses >/dev/null
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+          if [[ -z "$VERSION" ]]; then
+            echo "Could not read app versionName from app/build.gradle.kts" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this release already exists
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release ${{ steps.version.outputs.tag }} already exists; avoiding duplicate release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run tests and build beta APK
+        if: steps.existing.outputs.exists != 'true'
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Prepare release assets and checksum
+        if: steps.existing.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          TAG="${{ steps.version.outputs.tag }}"
+          APK="dist/Youtube-Convert-${TAG}-debug.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          (
+            cd dist
+            sha256sum "$(basename "$APK")" > SHA256SUMS.txt
+          )
+          cat > dist/RELEASE_NOTES.md <<EOF
+          # Youtube Convert ${TAG}
+
+          **Pre-release beta — not a production-signed stable build.**
+
+          ## Included
+          - Native Android app built with Kotlin, Jetpack Compose and Material 3.
+          - MP4 output with selectable video quality and MP3 audio extraction.
+          - Progress and cancellation, scoped storage publication, open/share actions.
+          - URL validation and automated unit/build checks.
+
+          ## Important limitations
+          - This APK is built from the Android debug variant and signed with the CI runner's debug key. It is for early testing; later CI builds may use a different key and may require uninstalling the previous beta before installing a new build.
+          - The bundled FFmpeg dependency has a reported 16 KB page-size alignment issue upstream. The app conservatively disables conversion on devices whose page size is not confirmed as 4 KB to avoid a native crash. See https://github.com/yausername/youtubedl-android/issues/365.
+          - CI verifies unit tests and APK assembly; it does not replace real-device end-to-end testing of media downloads and playback.
+          - Download only media you own or are authorized to download. No DRM bypass, cookie import, or private/paid-content access is provided.
+          EOF
+
+      - name: Publish GitHub prerelease
+        if: steps.existing.outputs.exists != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ github.token }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Youtube Convert ${{ steps.version.outputs.tag }}
+          body_path: dist/RELEASE_NOTES.md
+          draft: false
+          prerelease: true
+          make_latest: false
+          files: |
+            dist/Youtube-Convert-${{ steps.version.outputs.tag }}-debug.apk
+            dist/SHA256SUMS.txt
+            dist/RELEASE_NOTES.md
