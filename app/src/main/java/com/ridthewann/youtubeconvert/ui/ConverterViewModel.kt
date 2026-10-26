@@ -90,7 +90,7 @@ class ConverterViewModel(
                     } catch (_: Exception) {
                         _uiState.update {
                             it.copy(
-                                recentOutputsError = "Riwayat tidak dapat dimuat. Periksa folder Downloads/YoutubeConvert."
+                                recentOutputsError = "Riwayat tidak dapat dimuat. Periksa folder Download/UBAHVO."
                             )
                         }
                     }
@@ -268,7 +268,7 @@ class ConverterViewModel(
                         isBusy = false,
                         progress = 100f,
                         etaSeconds = 0L,
-                        stageMessage = "Selesai — disimpan ke Downloads/YoutubeConvert.",
+                        stageMessage = "Selesai — disimpan ke Download/UBAHVO.",
                         outputUri = result.uri,
                         outputName = result.displayName,
                         outputMimeType = result.mimeType,
