@@ -7,7 +7,6 @@ import com.ridthewann.ubahvo.core.VideoQuality
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.youtubedl_android.mapper.VideoInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -22,14 +21,6 @@ data class YtDlpUpdateResult(
 class DownloadRepository(context: Context) {
     private val appContext = context.applicationContext
     private val publisher = OutputPublisher(appContext)
-
-    suspend fun getInfo(url: String): VideoInfo = withContext(Dispatchers.IO) {
-        val request = YoutubeDLRequest(url).apply {
-            addOption("--no-playlist")
-            addOption("--no-warnings")
-        }
-        YoutubeDL.getInstance().getInfo(request)
-    }
 
     suspend fun updateYtDlp(): YtDlpUpdateResult = withContext(Dispatchers.IO) {
         StableYtDlpUpdater(appContext).update()
@@ -95,7 +86,14 @@ class DownloadRepository(context: Context) {
         return YoutubeDLRequest(url).apply {
             addOption("--no-playlist")
             addOption("--no-warnings")
+            addOption("--no-colors")
             addOption("--newline")
+            addOption("--progress")
+            // The upstream wrapper disables yt-dlp's cache unless --cache-dir is explicit.
+            // Retain its small extractor/player-function cache between conversion attempts.
+            addOption("--cache-dir", File(appContext.cacheDir, "yt-dlp-cache").absolutePath)
+            // Print the title during this same extraction, avoiding a separate --dump-json run.
+            addOption("--print", "before_dl:UBAHVO_TITLE:%(title)s")
             addOption("--no-mtime")
             addOption("--no-part")
             addOption("-o", template)
