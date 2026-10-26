@@ -77,7 +77,7 @@ class StableYtDlpUpdaterTest {
     @Test
     fun integrityVerificationRejectsTamperedPayload() {
         val expectedPayload = "#!/usr/bin/env python3\nprint('trusted')\n".toByteArray(Charsets.UTF_8)
-        val tamperedPayload = "#!/usr/bin/env python3\nprint('tampered')\n".toByteArray(Charsets.UTF_8)
+        val tamperedPayload = "#!/usr/bin/env python3\nprint('changed')\n".toByteArray(Charsets.UTF_8)
         val metadata = StableYtDlpRelease(
             tag = "2026.10.21",
             name = "yt-dlp 2026.10.21",
