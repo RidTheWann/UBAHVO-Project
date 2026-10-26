@@ -4,7 +4,7 @@ import android.app.Application
 import android.system.Os
 import android.system.OsConstants
 import android.util.Log
-import com.ridthewann.ubahvo.core.NativeMediaCompatibility
+import com.ridthewann.ubahvo.core.NativeMediaStartup
 import com.ridthewann.ubahvo.data.NativeRuntimeRepair
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
@@ -30,24 +30,35 @@ class UbahvoApplication : Application() {
         }.getOrNull()
         pageSizeBytes = detectedPageSize
 
-        if (!NativeMediaCompatibility.supportsBundledFfmpeg(detectedPageSize)) {
-            engineError = NativeMediaCompatibility.userFacingMessage(detectedPageSize)
-            Log.w(TAG, "Native media conversion disabled: " + engineError)
-            return
-        }
-
-        try {
+        // Native dependency or JNI linkage failures must not prevent the main UI from opening.
+        // NativeMediaStartup skips all engine setup on unverified memory page sizes and converts
+        // recoverable Kotlin/JVM initialization failures into a disabled-engine state.
+        val result = NativeMediaStartup.initialize(detectedPageSize) {
             YoutubeDL.getInstance().init(this)
             FFmpeg.getInstance().init(this)
 
-            // FFmpeg 0.18.1's published payload omits this shared dependency from its private usr/lib.
-            // Stage the ABI-matched runtime there because YoutubeDL sets LD_LIBRARY_PATH to that directory.
+            // FFmpeg 0.18.1 omits this shared dependency from its private usr/lib payload.
+            // Stage the ABI-matched runtime where the wrapper's LD_LIBRARY_PATH can find it.
             NativeRuntimeRepair.ensureFfmpegCppRuntime(this)
+        }
 
-            engineReady = true
-        } catch (error: Exception) {
-            engineError = "Komponen media gagal disiapkan. Tutup lalu buka kembali UBAHVO. Jika masalah berlanjut, coba setelah pembaruan aplikasi."
-            Log.e(TAG, "Media engine initialization failed", error)
+        engineReady = result.engineReady
+        engineError = result.errorMessage
+
+        when {
+            result.failure is LinkageError -> {
+                Log.e(
+                    TAG,
+                    "Media engine linkage failed; app startup will continue without conversion",
+                    result.failure
+                )
+            }
+            result.failure != null -> {
+                Log.e(TAG, "Media engine initialization failed; conversion is disabled", result.failure)
+            }
+            !result.engineReady -> {
+                Log.w(TAG, "Native media conversion disabled: " + result.errorMessage)
+            }
         }
     }
 
