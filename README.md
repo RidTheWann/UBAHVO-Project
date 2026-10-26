@@ -2,7 +2,7 @@
 
 **UBAHVO** is a native Android app for converting supported single-video YouTube links into MP4 video or MP3 audio. The universal APK covers 32-bit and 64-bit ARM phones; general local-file conversion is planned for a later stage.
 
-**Current status: beta (`0.1.0-beta.8`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.9`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
@@ -19,7 +19,7 @@
 
 Visit the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and download the single universal APK plus its SHA-256 checksum. The APK includes both `arm64-v8a` and `armeabi-v7a`, covering 64-bit and 32-bit ARM Android phones on Android 10 (API 29) or later. x86/x86_64 emulators and Intel Android devices are excluded.
 
-Download filename: `UBAHVO-0.1.0-beta.8-universal-debug.apk`.
+Download filename: `UBAHVO-0.1.0-beta.9-universal-debug.apk`.
 
 R8 code shrinking, resource shrinking, and compressed native-library packaging are enabled to reduce the download size. A universal APK still has to include both ARM variants, so it will be larger than a single-ABI APK.
 
@@ -27,7 +27,7 @@ The APK is built from the Android debug variant and is intended for early testin
 
 ## Application ID and existing installations
 
-The new application ID is `com.ridthewann.ubahvo`. Android treats beta.8 as a separate app from older builds using `com.ridthewann.youtubeconvert`; it will not update that installation in place. Install and test UBAHVO beta.8 before removing the old app, and back up important files first.
+The new application ID is `com.ridthewann.ubahvo`. The new application ID was introduced in beta.8, so UBAHVO is separate from older builds using `com.ridthewann.youtubeconvert`. Beta.9 keeps the new ID; debug signing can still require reinstalling between CI builds, so back up important files and export folders before uninstalling any build.
 
 New outputs are saved to `Download/UBAHVO`. Existing files in `Download/YoutubeConvert` are not moved or renamed. Recent history attempts to include both folders and both package-owner IDs where Android permits access. If a legacy file is important, keep a backup outside the app before uninstalling an older build.
 
@@ -45,7 +45,7 @@ Open the repository root in Android Studio and install Android SDK Platform 36, 
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 ```
 
-The one universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.8-universal-debug.apk`.
+The one universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.9-universal-debug.apk`.
 
 ## Product roadmap
 
