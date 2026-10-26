@@ -33,12 +33,16 @@ class UbahvoApplication : Application() {
         // Native dependency or JNI linkage failures must not prevent the main UI from opening.
         // NativeMediaStartup skips all engine setup on unverified memory page sizes and converts
         // recoverable Kotlin/JVM initialization failures into a disabled-engine state.
-        val result = NativeMediaStartup.initialize(detectedPageSize) {
+        val result = NativeMediaStartup.initialize(detectedPageSize) { setStage ->
+            setStage("Inisialisasi yt-dlp")
             YoutubeDL.getInstance().init(this)
+
+            setStage("Inisialisasi FFmpeg")
             FFmpeg.getInstance().init(this)
 
             // FFmpeg 0.18.1 omits this shared dependency from its private usr/lib payload.
             // Stage the ABI-matched runtime where the wrapper's LD_LIBRARY_PATH can find it.
+            setStage("Perbaikan runtime C++ FFmpeg")
             NativeRuntimeRepair.ensureFfmpegCppRuntime(this)
         }
 
