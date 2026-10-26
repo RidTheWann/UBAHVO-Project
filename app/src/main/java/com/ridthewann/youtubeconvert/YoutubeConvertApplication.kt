@@ -5,6 +5,7 @@ import android.system.Os
 import android.system.OsConstants
 import android.util.Log
 import com.ridthewann.youtubeconvert.core.NativeMediaCompatibility
+import com.ridthewann.youtubeconvert.data.NativeRuntimeRepair
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 
@@ -31,13 +32,18 @@ class YoutubeConvertApplication : Application() {
 
         if (!NativeMediaCompatibility.supportsBundledFfmpeg(detectedPageSize)) {
             engineError = NativeMediaCompatibility.userFacingMessage(detectedPageSize)
-            Log.w(TAG, "Native media conversion disabled: $engineError")
+            Log.w(TAG, "Native media conversion disabled: " + engineError)
             return
         }
 
         try {
             YoutubeDL.getInstance().init(this)
             FFmpeg.getInstance().init(this)
+
+            // FFmpeg 0.18.1's published payload omits this shared dependency from its private usr/lib.
+            // Stage the ABI-matched runtime there because YoutubeDL sets LD_LIBRARY_PATH to that directory.
+            NativeRuntimeRepair.ensureFfmpegCppRuntime(this)
+
             engineReady = true
         } catch (error: Exception) {
             engineError = error.message ?: error.javaClass.simpleName

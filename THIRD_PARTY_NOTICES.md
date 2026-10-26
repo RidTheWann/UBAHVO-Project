@@ -13,6 +13,13 @@ This application bundles media tooling through Gradle dependencies. Review the l
 - Artifact: `io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1`
 - Upstream project/release source: https://github.com/yausername/youtubedl-android
 - FFmpeg and any enabled codec libraries can carry separate license and patent conditions. Check the exact build configuration and notices shipped with the resolved artifact before redistribution.
+- Known upstream compatibility reports: missing `libc++_shared.so` in the internal FFmpeg payload (https://github.com/yausername/youtubedl-android/issues/369) and 16 KB page-size alignment (https://github.com/yausername/youtubedl-android/issues/365).
+
+## Android NDK C++ runtime
+
+- Binary: ABI-specific `libc++_shared.so` from Android NDK 27.2.12479018.
+- Official documentation: https://developer.android.com/ndk/guides/cpp-support
+- The LLVM Project, including libc++, is available under the Apache License 2.0 with LLVM Exceptions. See the license included with the NDK distribution and retain applicable notices when redistributing.
 
 ## yt-dlp
 

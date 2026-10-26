@@ -4,9 +4,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val bundledNdkVersion = "27.2.12479018"
+val generatedCppRuntimeDir = layout.buildDirectory.dir("generated/ffmpegCppRuntime/jniLibs")
+
 android {
     namespace = "com.ridthewann.youtubeconvert"
     compileSdk = 36
+    ndkVersion = bundledNdkVersion
 
     defaultConfig {
         applicationId = "com.ridthewann.youtubeconvert"
@@ -24,6 +28,13 @@ android {
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
             isUniversalApk = false
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            // Adds the ABI-matched NDK C++ runtime used to repair the upstream FFmpeg payload at startup.
+            jniLibs.srcDir(generatedCppRuntimeDir)
         }
     }
 
@@ -50,6 +61,62 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+}
+
+val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
+    group = "build setup"
+    description = "Stages the ABI-matched libc++ runtime from the pinned Android NDK into generated JNI libraries."
+    outputs.dir(generatedCppRuntimeDir)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val osName = System.getProperty("os.name").lowercase()
+        val osArch = System.getProperty("os.arch").lowercase()
+        val hostTag = when {
+            osName.contains("windows") -> "windows-x86_64"
+            osName.contains("mac") || osName.contains("darwin") ->
+                if (osArch.contains("arm64") || osArch.contains("aarch64")) "darwin-arm64" else "darwin-x86_64"
+            osName.contains("linux") ->
+                if (osArch.contains("arm64") || osArch.contains("aarch64")) "linux-aarch64" else "linux-x86_64"
+            else -> throw GradleException("Unsupported host OS for the pinned Android NDK: " + osName)
+        }
+
+        val ndkRoot = File(android.sdkDirectory, "ndk/" + bundledNdkVersion)
+        if (!ndkRoot.isDirectory) {
+            throw GradleException("Android NDK " + bundledNdkVersion + " is missing. Install it using SDK Manager.")
+        }
+
+        val sysrootLibs = File(
+            ndkRoot,
+            "toolchains/llvm/prebuilt/" + hostTag + "/sysroot/usr/lib"
+        )
+        val abiTriples = linkedMapOf(
+            "arm64-v8a" to "aarch64-linux-android",
+            "armeabi-v7a" to "arm-linux-androideabi",
+            "x86_64" to "x86_64-linux-android",
+            "x86" to "i686-linux-android"
+        )
+        val generatedRoot = generatedCppRuntimeDir.get().asFile
+        generatedRoot.deleteRecursively()
+
+        abiTriples.forEach { (abi, triple) ->
+            val source = File(File(sysrootLibs, triple), "libc++_shared.so")
+            if (!source.isFile || source.length() <= 0L) {
+                throw GradleException(
+                    "Missing libc++_shared.so for ABI " + abi + " in pinned NDK " + bundledNdkVersion
+                )
+            }
+            val destination = File(File(generatedRoot, abi), "libc++_shared.so")
+            if (!destination.parentFile.mkdirs() && !destination.parentFile.isDirectory) {
+                throw GradleException("Could not create generated native library directory for ABI " + abi)
+            }
+            source.copyTo(destination, overwrite = true)
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(prepareNdkCppRuntime)
 }
 
 dependencies {

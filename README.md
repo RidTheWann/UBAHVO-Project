@@ -11,7 +11,7 @@ Native Android app built with Kotlin and Jetpack Compose. It accepts a YouTube v
 - MP4 quality selection, MP3 audio extraction, progress, cancellation, and Android share-sheet URL intake.
 - Scoped-storage publishing through MediaStore. No broad storage permission is requested.
 - HTTPS YouTube URL validation and unit tests.
-- CI builds architecture-specific APKs and publishes beta GitHub prereleases after tests and APK assembly pass.
+- CI builds architecture-specific APKs, verifies that each APK includes the required C++ runtime, and publishes beta GitHub prereleases after tests and APK assembly pass.
 
 ## Latest beta
 
@@ -19,13 +19,15 @@ Use the [GitHub Releases page](https://github.com/RidTheWann/Youtube-Convert/rel
 
 The APKs are built from the Android debug variant and are intended for early testing, not as a production-signed release. Because the signing key is generated on GitHub's runner, a later beta may require uninstalling the previous build before installing the update.
 
-## Compatibility notice
+## Native runtime compatibility
 
-The currently pinned `youtubedl-android` FFmpeg dependency has an upstream report about 16 KB memory-page compatibility in its bundled FFmpeg payload: https://github.com/yausername/youtubedl-android/issues/365. On startup, the app checks the device page size and conservatively disables conversion unless it detects a verified 4 KB page size. This avoids invoking a native dependency known to crash on some 16 KB page-size devices. Do not treat the current beta as supporting 16 KB-page devices.
+The published `youtubedl-android` FFmpeg 0.18.1 artifact has an open upstream report because its bundled Rubber Band library needs `libc++_shared.so`, which is missing from that payload: https://github.com/yausername/youtubedl-android/issues/369. The build pins Android NDK 27.2.12479018, packages an ABI-matched C++ runtime, and stages it into FFmpeg's private `usr/lib` directory because that directory is included in the wrapper's `LD_LIBRARY_PATH`. CI verifies the APK contains the runtime and unit tests cover the staging logic. Physical-device execution still needs validation.
+
+The same FFmpeg dependency has an upstream 16 KB memory-page alignment issue: https://github.com/yausername/youtubedl-android/issues/365. On startup, the app checks the page size and disables conversion unless it detects a verified 4 KB page size. This is a fail-closed mitigation, not an upstream binary fix. Do not treat this beta as supporting 16 KB-page devices.
 
 ## Build locally
 
-Open the repository root in Android Studio, install Android SDK Platform 36, and use JDK 17 with Gradle 8.13.
+Open the repository root in Android Studio and install Android SDK Platform 36, Build Tools 36.0.0, and Android NDK 27.2.12479018. Use JDK 17 and Gradle 8.13.
 
 ```bash
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
@@ -39,4 +41,4 @@ Only download content that you own or are authorized to download, and comply wit
 
 ## Dependencies and licensing
 
-This project is licensed under GPL-3.0-only. It uses the `youtubedl-android` library and its FFmpeg component; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and review upstream notices before redistributing APKs. Binary dependencies are downloaded by Gradle and are not committed into this repository.
+This project is licensed under GPL-3.0-only. It uses the `youtubedl-android` library and its FFmpeg component; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and review upstream notices before redistributing APKs. The ABI-matched C++ runtime is taken from the pinned Android NDK. Binary dependencies are downloaded by Gradle and are not committed into this repository.
