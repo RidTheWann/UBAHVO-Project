@@ -132,6 +132,10 @@ jobs:
           # Confirm R8 did not remove the public no-arg constructor used reflectively by
           # Apache Commons Compress 1.12 when registering ZIP extra-field implementations.
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$SDK_ROOT" ]]; then
+            echo "Android SDK root is not configured for APK verification." >&2
+            exit 1
+          fi
           APKANALYZER="$(find "$SDK_ROOT/cmdline-tools" -type f -name apkanalyzer -print -quit)"
           if [[ -z "$APKANALYZER" || ! -x "$APKANALYZER" ]]; then
             echo "apkanalyzer was not found in the installed Android SDK command-line tools." >&2
@@ -140,7 +144,7 @@ jobs:
           CLASS_DUMP="$(mktemp)"
           trap 'rm -f "$CLASS_DUMP"' EXIT
           "$APKANALYZER" dex code --class org.apache.commons.compress.archivers.zip.AsiExtraField "$SOURCE" > "$CLASS_DUMP"
-          if ! grep -Fq '<init>()V' "$CLASS_DUMP"; then
+          if ! grep -Eq '^\\.method[[:space:]]+public([[:space:]]|$).*<init>\\(\\)V' "$CLASS_DUMP"; then
             echo "Minified APK is missing AsiExtraField's public no-argument constructor." >&2
             exit 1
           fi
