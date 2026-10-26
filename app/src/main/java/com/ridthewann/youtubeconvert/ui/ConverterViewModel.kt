@@ -52,7 +52,7 @@ class ConverterViewModel(
             stageMessage = if (application.engineReady) {
                 "Tempel tautan video untuk memulai."
             } else {
-                "Mesin media belum siap."
+                "Fitur simpan belum tersedia di perangkat ini."
             },
             errorMessage = application.engineError,
             engineReady = application.engineReady
@@ -142,7 +142,7 @@ class ConverterViewModel(
             _uiState.update {
                 it.copy(
                     ytdlpUpdateMessage = application.engineError
-                        ?: "Mesin media belum siap; pembaruan yt-dlp tidak dapat dijalankan."
+                        ?: "Pembaruan belum tersedia di perangkat ini."
                 )
             }
             return
@@ -152,7 +152,7 @@ class ConverterViewModel(
             _uiState.update {
                 it.copy(
                     isUpdatingYtDlp = true,
-                    ytdlpUpdateMessage = "Memeriksa pembaruan stabil resmi yt-dlp…",
+                    ytdlpUpdateMessage = "Memeriksa pembaruan…",
                     errorMessage = null
                 )
             }
@@ -167,23 +167,19 @@ class ConverterViewModel(
                     it.copy(
                         ytdlpVersion = version,
                         ytdlpUpdateMessage = if (result.updated) {
-                            "yt-dlp berhasil diperbarui ke $version."
+                            "Dukungan tautan berhasil diperbarui ke $version."
                         } else {
-                            "yt-dlp sudah menggunakan versi stabil terbaru ($version)."
+                            "Dukungan tautan sudah menggunakan versi terbaru ($version)."
                         }
                     )
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                val detail = error.message?.takeIf { it.isNotBlank() }?.take(140)
+                android.util.Log.w("UBAHVO", "Downloader support update failed", error)
                 _uiState.update {
                     it.copy(
-                        ytdlpUpdateMessage = if (detail == null) {
-                            "Pembaruan yt-dlp gagal. Periksa koneksi internet lalu coba lagi."
-                        } else {
-                            "Pembaruan yt-dlp gagal. Periksa koneksi internet lalu coba lagi. Detail: $detail"
-                        }
+                        ytdlpUpdateMessage = "Pembaruan gagal. Periksa koneksi internet lalu coba lagi."
                     )
                 }
             } finally {
@@ -200,7 +196,7 @@ class ConverterViewModel(
             _uiState.update {
                 it.copy(
                     errorMessage = application.engineError
-                        ?: "Mesin media gagal diinisialisasi. Tutup lalu buka ulang aplikasi."
+                        ?: "Fitur simpan belum siap. Tutup lalu buka kembali UBAHVO. Jika masalah berlanjut, coba lagi setelah pembaruan."
                 )
             }
             return
@@ -209,14 +205,14 @@ class ConverterViewModel(
         val normalizedUrl = YouTubeUrlValidator.normalize(snapshot.url)
         if (normalizedUrl == null) {
             _uiState.update {
-                it.copy(errorMessage = "Masukkan tautan video YouTube yang valid (HTTPS).")
+                it.copy(errorMessage = "Masukkan tautan YouTube yang benar, dimulai dengan https://.")
             }
             return
         }
 
         if (!snapshot.rightsConfirmed) {
             _uiState.update {
-                it.copy(errorMessage = "Konfirmasi hak/izin unduh sebelum memulai.")
+                it.copy(errorMessage = "Centang kotak izin sebelum menyimpan.")
             }
             return
         }
@@ -327,9 +323,10 @@ class ConverterViewModel(
             detail.contains("Unsupported URL", ignoreCase = true) ->
                 "Tautan tidak didukung. Gunakan tautan ke satu video YouTube."
             detail.contains("No .mp4 output", ignoreCase = true) ||
-                detail.contains("No .mp3 output", ignoreCase = true) -> detail
+                detail.contains("No .mp3 output", ignoreCase = true) ->
+                "File hasil belum berhasil dibuat. Coba lagi; jika terulang, perbarui dukungan tautan."
             detail.isNotBlank() ->
-                "Konversi gagal: ${detail.take(260)}"
+                "Belum bisa menyimpan konten. Periksa koneksi internet, pastikan video tersedia dan ruang penyimpanan cukup, lalu coba lagi."
             else ->
                 "Konversi gagal. Periksa koneksi internet dan pastikan video tersedia."
         }

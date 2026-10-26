@@ -2,7 +2,7 @@
 
 **UBAHVO** is a native Android app for converting supported YouTube video links into MP4 video or MP3 audio. The name is being broadened for the product's long-term direction, but **this beta is not yet a universal file converter**.
 
-**Current status: beta (`0.1.0-beta.5`).** This branding update is not a production-stable release.
+**Current status: beta (`0.1.0-beta.6`).** This is an early test build, not a production-stable release.
 
 ## What works today
 

@@ -2,6 +2,14 @@
 
 All notable user-facing changes to UBAHVO are documented here.
 
+## 0.1.0-beta.6 — 2026-10-26
+
+- Reworked main workflow wording into clear, numbered steps and simplified the format, link, permission, progress, and output labels.
+- Made the main action reflect the selected result: save video or save audio.
+- Replaced user-facing downloader/initialization errors with actionable plain-language guidance.
+- Allowed choice cards and the main action to grow more naturally with larger system text.
+- Kept conversion, updater verification, native compatibility guards, storage behavior, and app identity unchanged.
+
 ## 0.1.0-beta.5 — 2026-10-26
 
 - Introduced the UBAHVO product name, in-app header branding, developer credit, and a non-YouTube-specific launcher mark.

@@ -46,7 +46,7 @@ class YoutubeConvertApplication : Application() {
 
             engineReady = true
         } catch (error: Exception) {
-            engineError = error.message ?: error.javaClass.simpleName
+            engineError = "Komponen media gagal disiapkan. Tutup lalu buka kembali UBAHVO. Jika masalah berlanjut, coba setelah pembaruan aplikasi."
             Log.e(TAG, "Media engine initialization failed", error)
         }
     }
