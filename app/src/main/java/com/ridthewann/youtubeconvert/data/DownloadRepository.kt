@@ -35,6 +35,10 @@ class DownloadRepository(context: Context) {
         StableYtDlpUpdater(appContext).update()
     }
 
+    suspend fun recentOutputs(limit: Int = 5): List<RecentOutput> = withContext(Dispatchers.IO) {
+        publisher.recentOutputs(limit)
+    }
+
     suspend fun download(
         url: String,
         mode: OutputMode,

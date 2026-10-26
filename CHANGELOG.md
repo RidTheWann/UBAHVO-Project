@@ -2,6 +2,14 @@
 
 All notable user-facing changes to Youtube Convert are documented here.
 
+## 0.1.0-beta.4 — 2026-10-26
+
+- Added a recent-conversion history for the five latest app-owned files in Downloads/YoutubeConvert.
+- Added quick open/share actions plus file sizes and local timestamps.
+- Limited history to app-owned MediaStore entries without requesting broad storage permissions.
+- Improved MediaStore output stream cleanup and added formatting unit tests.
+
+
 ## 0.1.0-beta.3 — 2026-10-26
 
 - Verified the yt-dlp staging file and final installed file against the official release size and SHA-256 digest directly from disk.
