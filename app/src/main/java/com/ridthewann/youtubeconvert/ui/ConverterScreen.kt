@@ -128,11 +128,12 @@ fun ConverterScreen(
                         }
                     }
 
-                    if (state.ytdlpUpdateMessage != null) {
+                    val updateMessage = state.ytdlpUpdateMessage
+                    if (updateMessage != null) {
                         Text(
-                            state.ytdlpUpdateMessage.orEmpty(),
+                            updateMessage,
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (state.ytdlpUpdateMessage.startsWith("Pembaruan yt-dlp gagal")) {
+                            color = if (updateMessage.startsWith("Pembaruan yt-dlp gagal")) {
                                 MaterialTheme.colorScheme.error
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
