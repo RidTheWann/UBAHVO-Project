@@ -70,7 +70,7 @@ android {
 
 val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
     group = "build setup"
-    description = "Stages the ABI-matched libc++ runtime from the pinned Android NDK into generated JNI libraries."
+    description = "Stages ARM-only libc++ runtimes from the pinned Android NDK into generated JNI libraries."
     outputs.dir(generatedCppRuntimeDir)
     outputs.upToDateWhen { false }
 
@@ -97,9 +97,7 @@ val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
         )
         val abiTriples = linkedMapOf(
             "arm64-v8a" to "aarch64-linux-android",
-            "armeabi-v7a" to "arm-linux-androideabi",
-            "x86_64" to "x86_64-linux-android",
-            "x86" to "i686-linux-android"
+            "armeabi-v7a" to "arm-linux-androideabi"
         )
         val generatedRoot = generatedCppRuntimeDir.get().asFile
         generatedRoot.deleteRecursively()
