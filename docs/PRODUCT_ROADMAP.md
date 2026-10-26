@@ -8,11 +8,11 @@ UBAHVO should be understandable without technical knowledge. The target audience
 
 ## Stage 1 — Branding
 
-Status: beta.7 branding follow-up updates APK/release asset names and output folders while keeping Android package identity stable.
+Status: beta.8 branding follow-up updates application ID, Kotlin namespace/packages, APK and release names, and output folders. This package change creates a separate Android installation; it does not replace older app-ID installs.
 
 - Use UBAHVO as the user-facing product name and launcher identity.
 - Keep developer attribution secondary: “by RidTheWann”.
-- Preserve the Android `applicationId` and Kotlin package names. New outputs use `Download/UBAHVO`; recent-output history continues to include app-owned files in the legacy `Download/YoutubeConvert` folder without moving them.
+- Use `com.ridthewann.ubahvo` as the Android application ID and Kotlin namespace/package. New outputs use `Download/UBAHVO`; history queries `Download/YoutubeConvert` and the old package-owner ID where Android permits access, without moving legacy files.
 - Keep product claims accurate: the current beta processes supported YouTube URLs into MP4 video or MP3 audio only.
 
 ## Stage 2 — Beginner-friendly and accessible UI
