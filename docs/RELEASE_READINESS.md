@@ -2,31 +2,33 @@
 
 ## Release channel
 
-The first automated release is intentionally a beta prerelease. CI produces architecture-specific installable APKs from the Android debug variant, attaches SHA-256 checksums, and records known limitations. This repository does not currently have a persistent private Android release-signing key configured; therefore this workflow must not be represented as a production-signed stable release.
+The automated release is intentionally a beta prerelease. CI produces one universal ARM APK from the Android debug variant, attaches a SHA-256 checksum, and records known limitations. R8 code/resource shrinking and compressed native-library packaging are enabled; the APK includes both ARM ABIs and will still be larger than a single-ABI APK. This repository does not currently have a persistent private Android release-signing key configured, so this workflow must not be represented as a production-signed stable release.
 
 ## Current beta milestone
 
-`0.1.0-beta.2` adds an explicit user-triggered updater for the official stable yt-dlp channel. Release metadata and asset URLs are constrained to official GitHub endpoints; asset size, script header, and GitHub-published SHA-256 digest are verified before atomic install. Updates run off the UI thread; conversion cannot start while the updater is active, and format selection is locked during either operation. Network/update errors are surfaced instead of being reported as success.
+`0.1.0-beta.8` uses the UBAHVO application ID and Kotlin namespace/package. It publishes one direct-install APK containing `arm64-v8a` and `armeabi-v7a`, with x86/x86_64 excluded to reduce the download size. It also enables R8 and Android resource shrinking. Because the application ID changed from `com.ridthewann.youtubeconvert` to `com.ridthewann.ubahvo`, Android installs beta.8 as a separate app rather than an in-place update. Earlier beta milestones added the user-triggered stable yt-dlp updater, SHA-256 asset verification, rollback protection, and recent conversion history.
 
 ## Automated gates
 
 The Android CI workflow runs:
-- `:app:testDebugUnitTest`
-- `:app:assembleDebug` for all configured ABIs
-- A packaging check that verifies every ABI APK includes its corresponding `libc++_shared.so`
-- Unit tests that exercise safe replacement and validation of the staged native runtime
-- Artifact upload of the ARM64 APK for quick testing.
 
-The main-branch release workflow repeats test/build gates before publishing a prerelease and attaches APKs for arm64-v8a, armeabi-v7a, x86_64 and x86. It skips publication if that version's GitHub release already exists.
+- `:app:testDebugUnitTest`
+- `:app:assembleDebug` to create one universal ARM APK
+- A packaging check that verifies both `arm64-v8a` and `armeabi-v7a` contain `libc++_shared.so` inside the APK
+- Unit tests that exercise safe replacement and validation of the staged native runtime
+- Artifact upload of the single UBAHVO universal APK
+
+The main-branch release workflow repeats the tests/build gates before publishing a prerelease with one universal APK, a SHA-256 checksum, and release notes. x86/x86_64 emulator and Intel-device binaries are omitted. The workflow skips publication if that version’s GitHub release already exists.
 
 ## Known release blockers / boundaries
 
-1. **16 KB memory-page compatibility:** upstream issue https://github.com/yausername/youtubedl-android/issues/365 reports that some shared libraries inside the bundled FFmpeg payload remain 4 KB-aligned in youtubedl-android 0.18.1. Since a native linker failure may terminate the process, this application disables conversion unless the OS reports a 4 KB page size. This guard is a safety mitigation, not a fix to the upstream binary.
-2. **Missing FFmpeg C++ runtime in upstream artifact:** issue https://github.com/yausername/youtubedl-android/issues/369 reports that FFmpeg 0.18.1's internal Rubber Band library needs `libc++_shared.so`, missing from the published FFmpeg payload. This app packages the ABI-matched runtime from pinned NDK 27.2.12479018 and stages it into FFmpeg's private `usr/lib` directory, which the wrapper places on `LD_LIBRARY_PATH`. The build verifies that the runtime is packaged, and unit tests verify file-staging behavior; the native conversion itself still needs a physical-device smoke test.
+1. **16 KB memory-page compatibility:** upstream issue https://github.com/yausername/youtubedl-android/issues/365 reports that some shared libraries inside the bundled FFmpeg payload remain 4 KB-aligned in youtubedl-android 0.18.1. Since a native linker failure may terminate the process, this app disables conversion unless the OS reports a 4 KB page size. This guard is a safety mitigation, not a fix to the upstream binary; a universal APK does not remove this blocker.
+2. **Missing FFmpeg C++ runtime in upstream artifact:** issue https://github.com/yausername/youtubedl-android/issues/369 reports that FFmpeg 0.18.1’s internal Rubber Band library needs `libc++_shared.so`, missing from the published FFmpeg payload. The app stages an ABI-matched runtime from pinned NDK 27.2.12479018 into FFmpeg’s private `usr/lib` directory. CI verifies that the runtime is packaged and unit tests verify staging behavior; native conversion still needs physical-device smoke tests.
 3. **Physical-device smoke tests:** CI does not perform real YouTube network downloads, FFmpeg remux/extraction, playback, cancellation, or MediaStore checks on physical devices. These remain unverified by CI.
 4. **Debug signing:** beta APKs use the runner-generated debug signing key. Do not promise seamless in-place updates between separately generated beta APKs. A production stable release requires a protected release keystore and stable-key update testing.
-5. **Third-party version status:** youtubedl-android 0.18.1 is documented upstream as a pre-release. Re-evaluate version provenance, bundled yt-dlp freshness, native ABI alignment and licenses before stable distribution.
-6. **Service and rights compliance:** the ownership/permission checkbox is an attestation, not a technical authorization mechanism. Use only for media the user owns or has permission to download. Do not add DRM bypass, cookie import, or private/paid-content access.
+5. **Third-party version status:** youtubedl-android 0.18.1 is documented upstream as a pre-release. Re-evaluate version provenance, bundled yt-dlp freshness, native ABI alignment, 16 KB compatibility, and licenses before stable distribution.
+6. **Package migration:** beta.8 uses `com.ridthewann.ubahvo`, so it cannot update the previous `com.ridthewann.youtubeconvert` package. Test the new app first and back up important exports before uninstalling an older build.
+7. **Service and rights compliance:** the ownership/permission checkbox is an attestation, not a technical authorization mechanism. Use only media the user owns or has permission to download. Do not add DRM bypass, cookie import, or private/paid-content access.
 
 ## Criteria before calling it stable
 

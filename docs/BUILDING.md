@@ -16,15 +16,17 @@ From the repository root:
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 ```
 
-Gradle prepares an ABI-matched `libc++_shared.so` from the pinned NDK for every ABI, packages it into the APK, and the app stages it into FFmpeg's private library directory at startup to mitigate upstream issue https://github.com/yausername/youtubedl-android/issues/369.
+Gradle prepares an ABI-matched `libc++_shared.so` from the pinned NDK and packages the two ARM variants into one universal APK. The app stages the runtime into FFmpeg’s private library directory at startup to mitigate upstream issue https://github.com/yausername/youtubedl-android/issues/369.
 
-The build creates ABI-specific APKs under `app/build/outputs/apk/debug/`:
+The universal beta APK is created at `app/build/outputs/apk/debug/UBAHVO-0.1.0-beta.8-universal-debug.apk`. It includes:
 
-- `app-arm64-v8a-debug.apk` — most modern Android phones
-- `app-armeabi-v7a-debug.apk` — 32-bit ARM devices
-- `app-x86_64-debug.apk` — x86_64 devices/emulators
-- `app-x86-debug.apk` — 32-bit x86 devices/emulators
+- `arm64-v8a` — 64-bit ARM Android phones
+- `armeabi-v7a` — 32-bit ARM Android phones
 
-Install only the APK matching the target device ABI. These are debug-signed development builds, not production-signed stable releases.
+x86/x86_64 emulator and Intel-device binaries are deliberately excluded to reduce download size. R8 code shrinking, resource shrinking, and compressed native-library packaging are enabled. The universal APK is still larger than a single-ABI APK because it includes both ARM variants.
 
-The GitHub Actions CI tests the source, assembles ABI-specific APKs, and verifies that each APK includes its ABI-matched C++ runtime. The beta release workflow also publishes APKs and a SHA-256 checksum after those gates pass. The repository currently does not include Gradle Wrapper scripts/JAR; use a local Gradle 8.13 installation for this revision.
+The GitHub Actions CI runs unit tests, assembles the universal APK, verifies that both ARM variants include their ABI-matched C++ runtime, and uploads one UBAHVO-branded APK artifact. The release workflow publishes one universal APK and its SHA-256 checksum.
+
+These are debug-signed development builds, not production-signed stable releases. This build uses application ID `com.ridthewann.ubahvo`; it is installed separately from older builds that used `com.ridthewann.youtubeconvert`.
+
+The repository currently does not include Gradle Wrapper scripts/JAR; use a local Gradle 8.13 installation for this revision.

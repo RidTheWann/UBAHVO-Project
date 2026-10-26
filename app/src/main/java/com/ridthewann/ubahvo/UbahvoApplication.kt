@@ -1,15 +1,15 @@
-package com.ridthewann.youtubeconvert
+package com.ridthewann.ubahvo
 
 import android.app.Application
 import android.system.Os
 import android.system.OsConstants
 import android.util.Log
-import com.ridthewann.youtubeconvert.core.NativeMediaCompatibility
-import com.ridthewann.youtubeconvert.data.NativeRuntimeRepair
+import com.ridthewann.ubahvo.core.NativeMediaCompatibility
+import com.ridthewann.ubahvo.data.NativeRuntimeRepair
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 
-class YoutubeConvertApplication : Application() {
+class UbahvoApplication : Application() {
     @Volatile
     var engineReady: Boolean = false
         private set
@@ -52,6 +52,6 @@ class YoutubeConvertApplication : Application() {
     }
 
     companion object {
-        private const val TAG = "YoutubeConvert"
+        private const val TAG = "UBAHVO"
     }
 }

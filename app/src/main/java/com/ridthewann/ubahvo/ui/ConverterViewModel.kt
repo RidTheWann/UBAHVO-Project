@@ -1,15 +1,15 @@
-package com.ridthewann.youtubeconvert.ui
+package com.ridthewann.ubahvo.ui
 
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.ridthewann.youtubeconvert.YoutubeConvertApplication
-import com.ridthewann.youtubeconvert.core.OutputMode
-import com.ridthewann.youtubeconvert.core.VideoQuality
-import com.ridthewann.youtubeconvert.data.DownloadRepository
-import com.ridthewann.youtubeconvert.data.RecentOutput
-import com.ridthewann.youtubeconvert.data.YouTubeUrlValidator
+import com.ridthewann.ubahvo.UbahvoApplication
+import com.ridthewann.ubahvo.core.OutputMode
+import com.ridthewann.ubahvo.core.VideoQuality
+import com.ridthewann.ubahvo.data.DownloadRepository
+import com.ridthewann.ubahvo.data.RecentOutput
+import com.ridthewann.ubahvo.data.YouTubeUrlValidator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +44,7 @@ data class ConverterUiState(
 )
 
 class ConverterViewModel(
-    private val application: YoutubeConvertApplication,
+    private val application: UbahvoApplication,
     private val repository: DownloadRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
@@ -90,7 +90,7 @@ class ConverterViewModel(
                     } catch (_: Exception) {
                         _uiState.update {
                             it.copy(
-                                recentOutputsError = "Riwayat tidak dapat dimuat. Periksa folder Downloads/YoutubeConvert."
+                                recentOutputsError = "Riwayat tidak dapat dimuat. Periksa folder Download/UBAHVO."
                             )
                         }
                     }
@@ -268,7 +268,7 @@ class ConverterViewModel(
                         isBusy = false,
                         progress = 100f,
                         etaSeconds = 0L,
-                        stageMessage = "Selesai — disimpan ke Downloads/YoutubeConvert.",
+                        stageMessage = "Selesai — disimpan ke Download/UBAHVO.",
                         outputUri = result.uri,
                         outputName = result.displayName,
                         outputMimeType = result.mimeType,
@@ -339,7 +339,7 @@ class ConverterViewModel(
 }
 
 class ConverterViewModelFactory(
-    private val application: YoutubeConvertApplication
+    private val application: UbahvoApplication
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

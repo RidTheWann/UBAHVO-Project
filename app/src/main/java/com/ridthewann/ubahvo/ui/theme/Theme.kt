@@ -1,4 +1,4 @@
-package com.ridthewann.youtubeconvert.ui.theme
+package com.ridthewann.ubahvo.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -24,7 +24,7 @@ private val AppColors = darkColorScheme(
 )
 
 @Composable
-fun YoutubeConvertTheme(content: @Composable () -> Unit) {
+fun UbahvoTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = AppColors,
         typography = MaterialTheme.typography,

@@ -1,4 +1,4 @@
-package com.ridthewann.youtubeconvert.data
+package com.ridthewann.ubahvo.data
 
 import android.content.ContentUris
 import android.content.ContentValues
@@ -21,7 +21,7 @@ class OutputPublisher(private val context: Context) {
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
             put(
                 MediaStore.MediaColumns.RELATIVE_PATH,
-                "${Environment.DIRECTORY_DOWNLOADS}/YoutubeConvert"
+                "${Environment.DIRECTORY_DOWNLOADS}/UBAHVO"
             )
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
@@ -55,12 +55,17 @@ class OutputPublisher(private val context: Context) {
     }
 
     /**
-     * Returns only app-owned files from this app's Downloads/YoutubeConvert directory.
+     * Returns the latest app-owned files from the UBAHVO folder and the previous YoutubeConvert folder.
      * This avoids showing unrelated files another app may place in a similarly named folder.
      */
     fun recentOutputs(limit: Int = DEFAULT_HISTORY_LIMIT): List<RecentOutput> {
         val safeLimit = limit.coerceIn(1, MAX_HISTORY_LIMIT)
-        val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/YoutubeConvert"
+        // Search both the new folder and the legacy folder so existing app-owned files
+        // remain visible in history after the branding change.
+        val relativePaths = listOf(
+            "${Environment.DIRECTORY_DOWNLOADS}/UBAHVO",
+            "${Environment.DIRECTORY_DOWNLOADS}/YoutubeConvert"
+        )
         val projection = arrayOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
@@ -68,18 +73,25 @@ class OutputPublisher(private val context: Context) {
             MediaStore.MediaColumns.SIZE,
             MediaStore.MediaColumns.DATE_ADDED
         )
-        val selection = "(" +
+        val pathSelection = relativePaths.joinToString(
+            separator = " OR ",
+            prefix = "(",
+            postfix = ")"
+        ) {
             "${MediaStore.MediaColumns.RELATIVE_PATH} = ? OR " +
-            "${MediaStore.MediaColumns.RELATIVE_PATH} = ? OR " +
-            "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?" +
-            ") AND ${MediaStore.MediaColumns.IS_PENDING} = 0 AND " +
-            "${MediaStore.MediaColumns.OWNER_PACKAGE_NAME} = ?"
-        val selectionArgs = arrayOf(
-            relativePath,
-            "$relativePath/",
-            "$relativePath/%",
-            context.packageName
-        )
+                "${MediaStore.MediaColumns.RELATIVE_PATH} = ? OR " +
+                "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+        }
+        val selection = pathSelection +
+            " AND ${MediaStore.MediaColumns.IS_PENDING} = 0 AND " +
+            "${MediaStore.MediaColumns.OWNER_PACKAGE_NAME} IN (?, ?)"
+        val selectionArgs = relativePaths.flatMap { path ->
+            listOf(path, "$path/", "$path/%")
+        }.toMutableList().apply {
+            add(context.packageName)
+            // The package ID changed in beta.8; keep old-package exports discoverable where Android permits.
+            add(LEGACY_APPLICATION_ID)
+        }.toTypedArray()
         val sortOrder = "${MediaStore.MediaColumns.DATE_ADDED} DESC, " +
             "${MediaStore.MediaColumns._ID} DESC"
         val results = ArrayList<RecentOutput>(safeLimit)
@@ -143,6 +155,7 @@ class OutputPublisher(private val context: Context) {
     companion object {
         private const val DEFAULT_HISTORY_LIMIT = 5
         private const val MAX_HISTORY_LIMIT = 20
+        private const val LEGACY_APPLICATION_ID = "com.ridthewann.youtubeconvert"
     }
 }
 

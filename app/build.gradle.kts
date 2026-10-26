@@ -8,26 +8,21 @@ val bundledNdkVersion = "27.2.12479018"
 val generatedCppRuntimeDir = layout.buildDirectory.dir("generated/ffmpegCppRuntime/jniLibs")
 
 android {
-    namespace = "com.ridthewann.youtubeconvert"
+    namespace = "com.ridthewann.ubahvo"
     compileSdk = 36
     ndkVersion = bundledNdkVersion
 
     defaultConfig {
-        applicationId = "com.ridthewann.youtubeconvert"
+        applicationId = "com.ridthewann.ubahvo"
         minSdk = 29
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.1.0-beta.6"
+        versionCode = 8
+        versionName = "0.1.0-beta.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    // Keep release downloads architecture-specific; a universal APK would bundle all native runtimes.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
-            isUniversalApk = false
+        // One direct-download APK supports 64-bit and 32-bit ARM Android phones.
+        // x86/x86_64 are omitted to keep the universal APK smaller.
+        ndk {
+            abiFilters += setOf("arm64-v8a", "armeabi-v7a")
         }
     }
 
@@ -35,6 +30,16 @@ android {
         getByName("main") {
             // Adds the ABI-matched NDK C++ runtime used to repair the upstream FFmpeg payload at startup.
             jniLibs.srcDir(generatedCppRuntimeDir)
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            // Shrink Kotlin/Java code and unused Android resources in the downloadable beta APK.
+            // Native media runtimes remain the main size cost of a universal APK.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
     }
 
@@ -65,7 +70,7 @@ android {
 
 val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
     group = "build setup"
-    description = "Stages the ABI-matched libc++ runtime from the pinned Android NDK into generated JNI libraries."
+    description = "Stages ARM-only libc++ runtimes from the pinned Android NDK into generated JNI libraries."
     outputs.dir(generatedCppRuntimeDir)
     outputs.upToDateWhen { false }
 
@@ -92,9 +97,7 @@ val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
         )
         val abiTriples = linkedMapOf(
             "arm64-v8a" to "aarch64-linux-android",
-            "armeabi-v7a" to "arm-linux-androideabi",
-            "x86_64" to "x86_64-linux-android",
-            "x86" to "i686-linux-android"
+            "armeabi-v7a" to "arm-linux-androideabi"
         )
         val generatedRoot = generatedCppRuntimeDir.get().asFile
         generatedRoot.deleteRecursively()
@@ -117,6 +120,36 @@ val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
 
 tasks.named("preBuild").configure {
     dependsOn(prepareNdkCppRuntime)
+}
+
+// Android Gradle Plugin's default APK names expose the generic "app" module name.
+// Rename the single universal ARM debug APK to the public product name after every assembleDebug.
+val renameUbahvoDebugApks = tasks.register("renameUbahvoDebugApks") {
+    group = "build"
+    description = "Renames the single universal ARM debug APK to the UBAHVO product name."
+
+    doLast {
+        val apkDirectory = layout.buildDirectory.dir("outputs/apk/debug").get().asFile
+        val appVersion = android.defaultConfig.versionName
+            ?: throw GradleException("Could not read the UBAHVO versionName.")
+
+        val source = File(apkDirectory, "app-debug.apk")
+        val destination = File(apkDirectory, "UBAHVO-" + appVersion + "-universal-debug.apk")
+
+        if (!source.isFile || source.length() <= 0L) {
+            throw GradleException("Missing or empty universal APK before branding rename: " + source.absolutePath)
+        }
+        if (destination.exists() && !destination.delete()) {
+            throw GradleException("Could not replace previous universal APK: " + destination.absolutePath)
+        }
+        if (!source.renameTo(destination)) {
+            throw GradleException("Could not rename APK to UBAHVO universal filename: " + destination.absolutePath)
+        }
+    }
+}
+
+tasks.matching { it.name == "assembleDebug" }.configureEach {
+    finalizedBy(renameUbahvoDebugApks)
 }
 
 dependencies {

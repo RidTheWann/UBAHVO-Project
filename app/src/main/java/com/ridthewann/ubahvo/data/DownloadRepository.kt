@@ -1,9 +1,9 @@
-package com.ridthewann.youtubeconvert.data
+package com.ridthewann.ubahvo.data
 
 import android.content.Context
 import android.os.Environment
-import com.ridthewann.youtubeconvert.core.OutputMode
-import com.ridthewann.youtubeconvert.core.VideoQuality
+import com.ridthewann.ubahvo.core.OutputMode
+import com.ridthewann.ubahvo.core.VideoQuality
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -48,7 +48,7 @@ class DownloadRepository(context: Context) {
     ): PublishedOutput = withContext(Dispatchers.IO) {
         val baseDirectory = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
             ?: appContext.cacheDir
-        val outputDirectory = File(baseDirectory, "YoutubeConvert/$processId")
+        val outputDirectory = File(baseDirectory, "UBAHVO/$processId")
         if (!outputDirectory.mkdirs() && !outputDirectory.isDirectory) {
             throw IOException("Could not create a temporary output directory.")
         }
