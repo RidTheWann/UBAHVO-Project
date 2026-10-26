@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.ridthewann.youtubeconvert.ui.ConverterScreen
 import com.ridthewann.youtubeconvert.ui.ConverterViewModel
 import com.ridthewann.youtubeconvert.ui.ConverterViewModelFactory
-import com.ridthewann.youtubeconvert.ui.theme.YoutubeConvertTheme
+import com.ridthewann.youtubeconvert.ui.theme.UbahvoTheme
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: ConverterViewModel
@@ -19,14 +19,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val app = application as YoutubeConvertApplication
+        val app = application as UbahvoApplication
         viewModel = ViewModelProvider(this, ConverterViewModelFactory(app))
             .get(ConverterViewModel::class.java)
 
         readSharedText(intent)
 
         setContent {
-            YoutubeConvertTheme {
+            UbahvoTheme {
                 ConverterScreen(
                     viewModel = viewModel,
                     onOpenOutput = ::openOutput,
