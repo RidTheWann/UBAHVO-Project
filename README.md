@@ -16,7 +16,7 @@ Native Android app built with Kotlin and Jetpack Compose. It accepts a YouTube v
 
 ## Latest beta
 
-The `0.1.0-beta.2` update adds a manual stable yt-dlp updater. Use the `Perbarui` control in the app when network access is available; the updater accepts only the official GitHub release asset and verifies its published SHA-256 digest before atomically replacing the bundled script. It does not silently replace the downloader in the background.
+The `0.1.0-beta.3` update hardens the manual stable yt-dlp updater with on-disk SHA-256 verification of both the staged and final installed script, plus rollback protection. Use the `Perbarui` control in the app when network access is available; the updater accepts only the official GitHub release asset and verifies its published SHA-256 digest before atomically replacing the bundled script. It does not silently replace the downloader in the background.
 
 Use the [GitHub Releases page](https://github.com/RidTheWann/Youtube-Convert/releases) to get an APK and the SHA-256 checksum. Choose the APK matching your device ABI; **arm64-v8a is the typical choice for modern Android phones**. Architecture-specific APKs avoid the large download size of a universal APK.
 
