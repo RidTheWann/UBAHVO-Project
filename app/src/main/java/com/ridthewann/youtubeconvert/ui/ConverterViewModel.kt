@@ -4,7 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.ridthewann.youtubeconvert.YoutubeConvertApplication
+import com.ridthewann.youtubeconvert.UbahvoApplication
 import com.ridthewann.youtubeconvert.core.OutputMode
 import com.ridthewann.youtubeconvert.core.VideoQuality
 import com.ridthewann.youtubeconvert.data.DownloadRepository
@@ -44,7 +44,7 @@ data class ConverterUiState(
 )
 
 class ConverterViewModel(
-    private val application: YoutubeConvertApplication,
+    private val application: UbahvoApplication,
     private val repository: DownloadRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
@@ -339,7 +339,7 @@ class ConverterViewModel(
 }
 
 class ConverterViewModelFactory(
-    private val application: YoutubeConvertApplication
+    private val application: UbahvoApplication
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
