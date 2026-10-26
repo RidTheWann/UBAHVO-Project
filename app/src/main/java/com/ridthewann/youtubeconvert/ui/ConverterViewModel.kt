@@ -175,7 +175,8 @@ class ConverterViewModel(
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                android.util.Log.w("UBAHVO", "Downloader support update failed", error)
                 _uiState.update {
                     it.copy(
                         ytdlpUpdateMessage = "Pembaruan gagal. Periksa koneksi internet lalu coba lagi."
