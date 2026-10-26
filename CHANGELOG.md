@@ -2,6 +2,12 @@
 
 All notable user-facing changes to Youtube Convert are documented here.
 
+## 0.1.0-beta.3 — 2026-10-26
+
+- Verified the yt-dlp staging file and final installed file against the official release size and SHA-256 digest directly from disk.
+- Added rollback protection so a failed final-file verification restores the previously installed downloader.
+- Added regression coverage for same-length tampering of a persisted updater file.
+
 ## 0.1.0-beta.2 — 2026-10-26
 
 - Added a manual updater for the official stable yt-dlp binary, so users can refresh site compatibility without waiting for a full APK update.
