@@ -144,7 +144,7 @@ jobs:
           CLASS_DUMP="$(mktemp)"
           trap 'rm -f "$CLASS_DUMP"' EXIT
           "$APKANALYZER" dex code --class org.apache.commons.compress.archivers.zip.AsiExtraField "$SOURCE" > "$CLASS_DUMP"
-          if ! grep -Eq '^\\.method[[:space:]]+public([[:space:]]|$).*<init>\\(\\)V' "$CLASS_DUMP"; then
+          if ! grep -Eq '^[[:space:]]*\.method[[:space:]]+public.*<init>\(\)V' "$CLASS_DUMP"; then
             echo "Minified APK is missing AsiExtraField's public no-argument constructor." >&2
             exit 1
           fi
