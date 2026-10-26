@@ -67,22 +67,30 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run tests and build beta APK
+      - name: Run tests and build ABI-split beta APKs
         if: steps.existing.outputs.exists != 'true'
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
-      - name: Prepare release assets and checksum
+      - name: Prepare release assets and checksums
         if: steps.existing.outputs.exists != 'true'
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
           TAG="${{ steps.version.outputs.tag }}"
-          APK="dist/Youtube-Convert-${TAG}-debug.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          ABIS=("arm64-v8a" "armeabi-v7a" "x86_64" "x86")
+          for ABI in "${ABIS[@]}"; do
+            SOURCE="app/build/outputs/apk/debug/app-${ABI}-debug.apk"
+            DEST="dist/Youtube-Convert-${TAG}-${ABI}-debug.apk"
+            if [[ ! -s "$SOURCE" ]]; then
+              echo "Missing or empty ABI APK: $SOURCE" >&2
+              exit 1
+            fi
+            cp "$SOURCE" "$DEST"
+          done
           (
             cd dist
-            sha256sum "$(basename "$APK")" > SHA256SUMS.txt
+            sha256sum Youtube-Convert-*.apk > SHA256SUMS.txt
           )
           cat > dist/RELEASE_NOTES.md <<EOF
           # Youtube Convert ${TAG}
@@ -94,9 +102,16 @@ jobs:
           - MP4 output with selectable video quality and MP3 audio extraction.
           - Progress and cancellation, scoped storage publication, open/share actions.
           - URL validation and automated unit/build checks.
+          - Architecture-specific APKs to avoid bundling native libraries for every CPU architecture into a single large download.
+
+          ## Which APK should I install?
+          - `arm64-v8a`: most modern Android phones.
+          - `armeabi-v7a`: older 32-bit ARM devices.
+          - `x86_64` / `x86`: Android emulators and compatible Intel devices.
+          Check your device ABI if unsure.
 
           ## Important limitations
-          - This APK is built from the Android debug variant and signed with the CI runner's debug key. It is for early testing; later CI builds may use a different key and may require uninstalling the previous beta before installing a new build.
+          - These APKs are built from the Android debug variant and signed with the CI runner's debug key. They are for early testing; later CI builds may use a different key and may require uninstalling the previous beta before installing a new build.
           - The bundled FFmpeg dependency has a reported 16 KB page-size alignment issue upstream. The app conservatively disables conversion on devices whose page size is not confirmed as 4 KB to avoid a native crash. See https://github.com/yausername/youtubedl-android/issues/365.
           - CI verifies unit tests and APK assembly; it does not replace real-device end-to-end testing of media downloads and playback.
           - Download only media you own or are authorized to download. No DRM bypass, cookie import, or private/paid-content access is provided.
@@ -115,6 +130,9 @@ jobs:
           prerelease: true
           make_latest: false
           files: |
-            dist/Youtube-Convert-${{ steps.version.outputs.tag }}-debug.apk
+            dist/Youtube-Convert-${{ steps.version.outputs.tag }}-arm64-v8a-debug.apk
+            dist/Youtube-Convert-${{ steps.version.outputs.tag }}-armeabi-v7a-debug.apk
+            dist/Youtube-Convert-${{ steps.version.outputs.tag }}-x86_64-debug.apk
+            dist/Youtube-Convert-${{ steps.version.outputs.tag }}-x86-debug.apk
             dist/SHA256SUMS.txt
             dist/RELEASE_NOTES.md

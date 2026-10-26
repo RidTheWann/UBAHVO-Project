@@ -21,6 +21,16 @@ android {
         }
     }
 
+    // Keep release downloads architecture-specific; a universal APK would bundle all native runtimes.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+            isUniversalApk = false
+        }
+    }
+
     buildFeatures {
         compose = true
     }

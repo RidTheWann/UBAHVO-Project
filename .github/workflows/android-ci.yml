@@ -42,13 +42,13 @@ jobs:
         with:
           gradle-version: "8.13"
 
-      - name: Run unit tests and assemble APK
+      - name: Run unit tests and assemble ABI-split APKs
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
-      - name: Upload debug APK
+      - name: Upload ARM64 debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: youtube-convert-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: youtube-convert-arm64-debug-apk
+          path: app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
           if-no-files-found: error
           retention-days: 14

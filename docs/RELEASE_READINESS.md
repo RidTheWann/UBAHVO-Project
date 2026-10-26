@@ -2,22 +2,23 @@
 
 ## Release channel
 
-The first automated release is intentionally a beta prerelease. CI produces an installable APK from the Android debug variant, attaches a SHA-256 checksum, and records known limitations. This repository does not currently have a persistent private Android release-signing key configured; therefore this workflow must not be represented as a production-signed stable release.
+The first automated release is intentionally a beta prerelease. CI produces architecture-specific installable APKs from the Android debug variant, attaches SHA-256 checksums, and records known limitations. This repository does not currently have a persistent private Android release-signing key configured; therefore this workflow must not be represented as a production-signed stable release.
 
 ## Automated gates
 
 The Android CI workflow runs:
 - `:app:testDebugUnitTest`
-- `:app:assembleDebug`
+- `:app:assembleDebug` for all configured ABIs
+- Artifact upload of the ARM64 APK for quick testing.
 
-The main-branch release workflow repeats these gates before publishing a prerelease, and it skips publication if that version's GitHub release already exists.
+The main-branch release workflow repeats the test/build gates before publishing a prerelease and attaches APKs for arm64-v8a, armeabi-v7a, x86_64 and x86. It skips publication if that version's GitHub release already exists.
 
 ## Known release blockers / boundaries
 
 1. **16 KB memory-page compatibility:** upstream issue https://github.com/yausername/youtubedl-android/issues/365 reports that some shared libraries inside the bundled FFmpeg payload remain 4 KB-aligned in youtubedl-android 0.18.1. Since a native linker failure may terminate the process, this application disables conversion unless the OS reports a 4 KB page size. This guard is a safety mitigation, not a fix to the upstream binary.
 2. **Physical-device smoke tests:** CI does not perform real YouTube network downloads, FFmpeg remux/extraction, playback, cancellation, or MediaStore checks on physical devices. These remain unverified by CI.
 3. **Debug signing:** beta APKs use the runner-generated debug signing key. Do not promise seamless in-place updates between separately generated beta APKs. A production stable release requires a protected release keystore and restricted CI secrets.
-4. **Third-party version status:** youtubedl-android 0.18.1 is documented upstream as a pre-release. Re-evaluate version provenance, bundled yt-dlp freshness, native ABI alignment and licenses before promoting this app to stable.
+4. **Third-party version status:** youtubedl-android 0.18.1 is documented upstream as a pre-release. Re-evaluate version provenance, bundled yt-dlp freshness, native ABI alignment and licenses before stable distribution.
 5. **Service and rights compliance:** the ownership/permission checkbox is an attestation, not a technical authorization mechanism. Use only for media the user owns or has permission to download. Do not add DRM bypass, cookie import, or private/paid-content access.
 
 ## Criteria before calling it stable

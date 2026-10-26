@@ -11,11 +11,13 @@ Native Android app built with Kotlin and Jetpack Compose. It accepts a YouTube v
 - MP4 quality selection, MP3 audio extraction, progress, cancellation, and Android share-sheet URL intake.
 - Scoped-storage publishing through MediaStore. No broad storage permission is requested.
 - HTTPS YouTube URL validation and unit tests.
-- GitHub Actions checks tests and assembles a debug APK; the main branch is configured to publish a beta GitHub prerelease when a new app version is pushed.
+- CI builds architecture-specific APKs and publishes beta GitHub prereleases after tests and APK assembly pass.
 
 ## Latest beta
 
-Use the [GitHub Releases page](https://github.com/RidTheWann/Youtube-Convert/releases) to get the APK and SHA-256 checksum. The release APK is built from the Android debug variant and is intended for early testing, not as a production-signed release. Because the signing key is generated on GitHub's runner, a later beta may require uninstalling the previous build before installing the update.
+Use the [GitHub Releases page](https://github.com/RidTheWann/Youtube-Convert/releases) to get an APK and the SHA-256 checksum. Choose the APK matching your device ABI; **arm64-v8a is the typical choice for modern Android phones**. Architecture-specific APKs avoid the large download size of a universal APK.
+
+The APKs are built from the Android debug variant and are intended for early testing, not as a production-signed release. Because the signing key is generated on GitHub's runner, a later beta may require uninstalling the previous build before installing the update.
 
 ## Compatibility notice
 
@@ -29,7 +31,7 @@ Open the repository root in Android Studio, install Android SDK Platform 36, and
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 ```
 
-The debug APK is produced at `app/build/outputs/apk/debug/app-debug.apk`.
+Architecture-specific APKs are produced under `app/build/outputs/apk/debug/`, for example `app-arm64-v8a-debug.apk`.
 
 ## Use responsibly
 
