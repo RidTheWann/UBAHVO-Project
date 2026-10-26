@@ -326,7 +326,7 @@ class ConverterViewModel(
                 detail.contains("No .mp3 output", ignoreCase = true) ->
                 "File hasil belum berhasil dibuat. Coba lagi; jika terulang, perbarui dukungan tautan."
             detail.isNotBlank() ->
-                "Belum bisa menyimpan konten. Periksa internet dan pastikan video tersedia, lalu coba lagi."
+                "Belum bisa menyimpan konten. Periksa koneksi internet, pastikan video tersedia dan ruang penyimpanan cukup, lalu coba lagi."
             else ->
                 "Konversi gagal. Periksa koneksi internet dan pastikan video tersedia."
         }
