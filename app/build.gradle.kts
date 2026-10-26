@@ -16,9 +16,11 @@ android {
         applicationId = "com.ridthewann.ubahvo"
         minSdk = 29
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.1.0-beta.9"
+        versionCode = 10
+        versionName = "0.1.0-beta.10"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Keep only the locales used by the current Indonesian UI and English fallback.
+        resourceConfigurations += setOf("en", "id")
         // One direct-download APK supports 64-bit and 32-bit ARM Android phones.
         // x86/x86_64 are omitted to keep the universal APK smaller.
         ndk {
@@ -156,7 +158,6 @@ dependencies {
     // Compose 1.9.x is compatible with the pinned AGP 8.13 / Android API 36 toolchain.
     val composeBom = platform("androidx.compose:compose-bom:2025.10.01")
     implementation(composeBom)
-    androidTestImplementation(composeBom)
 
     implementation("androidx.activity:activity-compose:1.12.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")
@@ -177,9 +178,4 @@ dependencies {
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
 
     testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
