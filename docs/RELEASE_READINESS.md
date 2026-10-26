@@ -6,7 +6,7 @@ The first automated release is intentionally a beta prerelease. CI produces arch
 
 ## Current beta milestone
 
-`0.1.0-beta.2` adds an explicit user-triggered updater for the official stable yt-dlp channel. Updates run off the UI thread; conversion cannot start while the updater is active, and format selection is locked during either operation. Network/update errors are surfaced instead of being reported as success.
+`0.1.0-beta.2` adds an explicit user-triggered updater for the official stable yt-dlp channel. Release metadata and asset URLs are constrained to official GitHub endpoints; asset size, script header, and GitHub-published SHA-256 digest are verified before atomic install. Updates run off the UI thread; conversion cannot start while the updater is active, and format selection is locked during either operation. Network/update errors are surfaced instead of being reported as success.
 
 ## Automated gates
 

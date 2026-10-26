@@ -32,16 +32,7 @@ class DownloadRepository(context: Context) {
     }
 
     suspend fun updateYtDlp(): YtDlpUpdateResult = withContext(Dispatchers.IO) {
-        val status = YoutubeDL.getInstance().updateYoutubeDL(
-            appContext,
-            YoutubeDL.UpdateChannel.STABLE
-        ) ?: throw IOException("Could not determine yt-dlp update status.")
-
-        YtDlpUpdateResult(
-            updated = status == YoutubeDL.UpdateStatus.DONE,
-            version = YoutubeDL.getInstance().version(appContext),
-            versionName = YoutubeDL.getInstance().versionName(appContext)
-        )
+        StableYtDlpUpdater(appContext).update()
     }
 
     suspend fun download(
