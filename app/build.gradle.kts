@@ -150,7 +150,7 @@ val renameUbahvoDebugApks = tasks.register("renameUbahvoDebugApks") {
     }
 }
 
-tasks.named("assembleDebug").configure {
+tasks.matching { it.name == "assembleDebug" }.configureEach {
     finalizedBy(renameUbahvoDebugApks)
 }
 
