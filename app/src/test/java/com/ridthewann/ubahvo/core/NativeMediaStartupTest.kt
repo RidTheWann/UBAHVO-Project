@@ -37,7 +37,13 @@ class NativeMediaStartupTest {
 
     @Test
     fun linkageErrorIsReportedWithTheFailingStage() {
-        val failure = NoClassDefFoundError("test-missing-native-entry")
+        // Match the observed crash: Apache Commons Compress throws an ExceptionInInitializerError
+        // when its ZIP extra-field registry cannot instantiate AsiExtraField through reflection.
+        val failure = ExceptionInInitializerError(
+            RuntimeException(
+                "class org.apache.commons.compress.archivers.zip.AsiExtraField is not a concrete class"
+            )
+        )
 
         val result = NativeMediaStartup.initialize(4096L) { setStage ->
             setStage("Inisialisasi FFmpeg")
