@@ -8,7 +8,7 @@ UBAHVO should be understandable without technical knowledge. The target audience
 
 ## Stage 1 — Branding
 
-Status: implemented on the branding branch.
+Status: merged into main as the beta.5 branding baseline; the Android package identity and existing output folder remain unchanged.
 
 - Use UBAHVO as the user-facing product name and launcher identity.
 - Keep developer attribution secondary: “by RidTheWann”.
@@ -17,7 +17,7 @@ Status: implemented on the branding branch.
 
 ## Stage 2 — Beginner-friendly and accessible UI
 
-Next implementation stage.
+The first beginner-friendly UI pass is being introduced in beta.6. Real-device accessibility and workflow smoke tests remain necessary before a stable release.
 
 - Make the main workflow read from top to bottom: choose what to make, paste or share a link, choose a quality only when relevant, review permission guidance, then start.
 - Prefer clear action labels such as “Pilih video”, “Jadikan MP4”, “Jadikan MP3”, “Mulai”, “Batalkan”, and “Buka hasil” where those labels accurately describe the action.
