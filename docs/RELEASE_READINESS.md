@@ -4,6 +4,10 @@
 
 The first automated release is intentionally a beta prerelease. CI produces architecture-specific installable APKs from the Android debug variant, attaches SHA-256 checksums, and records known limitations. This repository does not currently have a persistent private Android release-signing key configured; therefore this workflow must not be represented as a production-signed stable release.
 
+## Current beta milestone
+
+`0.1.0-beta.2` adds an explicit user-triggered updater for the official stable yt-dlp channel. Updates run off the UI thread; conversion cannot start while the updater is active, and format selection is locked during either operation. Network/update errors are surfaced instead of being reported as success.
+
 ## Automated gates
 
 The Android CI workflow runs:

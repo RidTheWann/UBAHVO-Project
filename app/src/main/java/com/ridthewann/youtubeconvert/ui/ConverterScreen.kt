@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -77,6 +78,77 @@ fun ConverterScreen(
         ) {
             Header()
 
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Text(
+                                "Mesin yt-dlp",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                state.ytdlpVersion?.let { "Versi tercatat: $it" }
+                                    ?: "Periksa pembaruan stabil resmi agar dukungan situs tetap mutakhir.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = viewModel::updateYtDlp,
+                            enabled = state.engineReady && !state.isBusy && !state.isUpdatingYtDlp,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (state.isUpdatingYtDlp) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                androidx.compose.material3.Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = null
+                                )
+                            }
+                            Spacer(Modifier.width(7.dp))
+                            Text(if (state.isUpdatingYtDlp) "Memeriksa…" else "Perbarui")
+                        }
+                    }
+
+                    if (state.ytdlpUpdateMessage != null) {
+                        Text(
+                            state.ytdlpUpdateMessage.orEmpty(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (state.ytdlpUpdateMessage.startsWith("Pembaruan yt-dlp gagal")) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                    if (!state.engineReady) {
+                        Text(
+                            "Mesin media tidak siap. Konversi dan pembaruan dinonaktifkan.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = "PILIH FORMAT",
@@ -93,6 +165,7 @@ fun ConverterScreen(
                         title = "Video MP4",
                         subtitle = "Video + audio",
                         selected = state.mode == OutputMode.MP4,
+                        enabled = !state.isBusy && !state.isUpdatingYtDlp,
                         imageVector = Icons.Default.Movie,
                         onClick = { viewModel.setMode(OutputMode.MP4) }
                     )
@@ -101,6 +174,7 @@ fun ConverterScreen(
                         title = "Audio MP3",
                         subtitle = "Audio saja",
                         selected = state.mode == OutputMode.MP3,
+                        enabled = !state.isBusy && !state.isUpdatingYtDlp,
                         imageVector = Icons.Default.AudioFile,
                         onClick = { viewModel.setMode(OutputMode.MP3) }
                     )
@@ -134,7 +208,7 @@ fun ConverterScreen(
                         value = state.url,
                         onValueChange = viewModel::onUrlChanged,
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !state.isBusy,
+                        enabled = !state.isBusy && !state.isUpdatingYtDlp,
                         label = { Text("Tempel URL video") },
                         placeholder = { Text("https://youtu.be/…") },
                         singleLine = true,
@@ -240,7 +314,8 @@ fun ConverterScreen(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
                     onClick = viewModel::start,
-                    enabled = !state.isBusy && state.url.isNotBlank(),
+                    enabled = state.engineReady && !state.isBusy &&
+                        !state.isUpdatingYtDlp && state.url.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
@@ -450,6 +525,7 @@ private fun FormatCard(
     title: String,
     subtitle: String,
     selected: Boolean,
+    enabled: Boolean,
     imageVector: ImageVector,
     onClick: () -> Unit
 ) {
@@ -458,6 +534,7 @@ private fun FormatCard(
 
     Surface(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.height(112.dp),
         shape = RoundedCornerShape(18.dp),
         color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)

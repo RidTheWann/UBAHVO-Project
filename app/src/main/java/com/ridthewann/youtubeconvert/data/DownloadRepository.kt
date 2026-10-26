@@ -13,6 +13,12 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 
+data class YtDlpUpdateResult(
+    val updated: Boolean,
+    val version: String?,
+    val versionName: String?
+)
+
 class DownloadRepository(context: Context) {
     private val appContext = context.applicationContext
     private val publisher = OutputPublisher(appContext)
@@ -23,6 +29,19 @@ class DownloadRepository(context: Context) {
             addOption("--no-warnings")
         }
         YoutubeDL.getInstance().getInfo(request)
+    }
+
+    suspend fun updateYtDlp(): YtDlpUpdateResult = withContext(Dispatchers.IO) {
+        val status = YoutubeDL.getInstance().updateYoutubeDL(
+            appContext,
+            YoutubeDL.UpdateChannel.STABLE
+        ) ?: throw IOException("Could not determine yt-dlp update status.")
+
+        YtDlpUpdateResult(
+            updated = status == YoutubeDL.UpdateStatus.DONE,
+            version = YoutubeDL.getInstance().version(appContext),
+            versionName = YoutubeDL.getInstance().versionName(appContext)
+        )
     }
 
     suspend fun download(
