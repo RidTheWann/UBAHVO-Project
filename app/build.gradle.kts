@@ -16,8 +16,8 @@ android {
         applicationId = "com.ridthewann.ubahvo"
         minSdk = 29
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.1.0-beta.8"
+        versionCode = 9
+        versionName = "0.1.0-beta.9"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // One direct-download APK supports 64-bit and 32-bit ARM Android phones.
         // x86/x86_64 are omitted to keep the universal APK smaller.
@@ -39,7 +39,7 @@ android {
             // Native media runtimes remain the main size cost of a universal APK.
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
