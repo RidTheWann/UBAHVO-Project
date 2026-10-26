@@ -80,9 +80,9 @@ class StableYtDlpUpdaterTest {
     @Test
     fun diskVerifierRejectsSameLengthTampering() {
         val expectedPayload =
-            "#!/usr/bin/env python3\\nprint('trusted')\\n".toByteArray(Charsets.UTF_8)
+            "#!/usr/bin/env python3\nprint('trusted')\n".toByteArray(Charsets.UTF_8)
         val tamperedPayload =
-            "#!/usr/bin/env python3\\nprint('changed')\\n".toByteArray(Charsets.UTF_8)
+            "#!/usr/bin/env python3\nprint('changed')\n".toByteArray(Charsets.UTF_8)
         assertEquals(expectedPayload.size, tamperedPayload.size)
 
         val release = StableYtDlpRelease(
