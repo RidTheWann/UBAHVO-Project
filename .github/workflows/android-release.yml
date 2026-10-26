@@ -68,11 +68,11 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run tests and build ABI-split beta APKs
+      - name: Run tests and build one universal ARM beta APK
         if: steps.existing.outputs.exists != 'true'
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
-      - name: Prepare release assets and checksums
+      - name: Prepare the universal APK and checksum
         if: steps.existing.outputs.exists != 'true'
         shell: bash
         run: |
@@ -80,51 +80,43 @@ jobs:
           mkdir -p dist
           TAG="${{ steps.version.outputs.tag }}"
           VERSION="${{ steps.version.outputs.version }}"
-          ABIS=("arm64-v8a" "armeabi-v7a" "x86_64" "x86")
-          for ABI in "${ABIS[@]}"; do
-            SOURCE="app/build/outputs/apk/debug/UBAHVO-${VERSION}-${ABI}-debug.apk"
-            DEST="dist/UBAHVO-${VERSION}-${ABI}-debug.apk"
-            if [[ ! -s "$SOURCE" ]]; then
-              echo "Missing or empty ABI APK: $SOURCE" >&2
-              exit 1
-            fi
+          SOURCE="app/build/outputs/apk/debug/UBAHVO-${VERSION}-universal-debug.apk"
+          DEST="dist/UBAHVO-${VERSION}-universal-debug.apk"
+          if [[ ! -s "$SOURCE" ]]; then
+            echo "Missing or empty universal APK: $SOURCE" >&2
+            exit 1
+          fi
+          for ABI in arm64-v8a armeabi-v7a; do
             if ! unzip -Z1 "$SOURCE" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
-              echo "The APK for $ABI is missing its C++ runtime." >&2
+              echo "Universal APK is missing the C++ runtime for $ABI." >&2
               exit 1
             fi
-            cp "$SOURCE" "$DEST"
           done
+          cp "$SOURCE" "$DEST"
           (
             cd dist
-            sha256sum UBAHVO-*.apk > SHA256SUMS.txt
+            sha256sum "UBAHVO-${VERSION}-universal-debug.apk" > SHA256SUMS.txt
           )
           cat > dist/RELEASE_NOTES.md <<EOF
           # UBAHVO ${TAG}
 
-          **Pre-release beta — not a production-signed stable build.**
+          **Pre-release beta — debug-signed, not a production-stable build.**
 
-          UBAHVO currently converts supported single-video YouTube links into MP4 video or MP3 audio. Universal local-file conversion is planned for a later stage and is not included in this release.
+          ## One APK for Android phones
+          Download `UBAHVO-${VERSION}-universal-debug.apk`. It includes both 64-bit ARM (`arm64-v8a`) and 32-bit ARM (`armeabi-v7a`) native runtimes in one file. x86/x86_64 emulators and Intel Android devices are not included. R8 code/resource shrinking and compressed native-library packaging are enabled, but a universal APK is still larger than an APK containing only one ABI.
 
-          ## Included
-          - Native Android app built with Kotlin, Jetpack Compose and Material 3.
-          - MP4 output with selectable video quality and MP3 audio extraction.
-          - Progress and cancellation, scoped storage publication to Download/UBAHVO, open/share actions, and recent conversion history.
-          - Legacy files remain in Download/YoutubeConvert; the app continues to include those app-owned files in conversion history.
-          - URL validation, SHA-256-verified stable yt-dlp updates, native runtime repair, and automated unit/build checks.
-          - Architecture-specific APKs to avoid bundling native libraries for every CPU architecture into a single large download.
+          ## What's included
+          - Kotlin + Jetpack Compose interface with plain-language labels.
+          - MP4 video or MP3 audio from supported single-video YouTube URLs.
+          - Progress, cancellation, recent output history, open/share actions, and a user-triggered yt-dlp updater with SHA-256 verification.
+          - New output files are saved in `Download/UBAHVO`. Legacy files in `Download/YoutubeConvert` remain where they are; the app attempts to include them in recent history.
 
-          ## Which APK should I install?
-          - **arm64-v8a**: most modern Android phones.
-          - **armeabi-v7a**: older 32-bit ARM devices.
-          - **x86_64 / x86**: Android emulators and compatible Intel devices.
-          Check your device ABI if unsure.
-
-          ## Important limitations
-          - These APKs are built from the Android debug variant and signed with the CI runner's debug key. They are for early testing; later CI builds may use a different key and may require uninstalling the previous beta before installing a new build.
-          - The FFmpeg 0.18.1 package has an upstream report about missing libc++_shared.so (https://github.com/yausername/youtubedl-android/issues/369); this app stages the ABI-matched NDK runtime into FFmpeg's private library path as a workaround. This has not yet been validated by physical-device smoke tests.
-          - The bundled FFmpeg dependency also has a reported 16 KB page-size alignment issue (https://github.com/yausername/youtubedl-android/issues/365). The app conservatively disables conversion on devices whose page size is not confirmed as 4 KB.
-          - CI verifies unit tests, APK assembly and inclusion of the C++ runtime; it does not replace real-device end-to-end testing of media downloads and playback.
-          - Download only media you own or are authorized to download. No DRM bypass, cookie import, or private/paid-content access is provided.
+          ## Important compatibility notes
+          - New application ID: `com.ridthewann.ubahvo`. Android treats this as a separate app from older builds with ID `com.ridthewann.youtubeconvert`; this beta does not update the older installation in place. Test beta.8 before removing the old app, and back up important files first.
+          - The current FFmpeg 0.18.1 dependency has a reported 16 KB page-size alignment problem (https://github.com/yausername/youtubedl-android/issues/365). UBAHVO conservatively disables conversion when the device page size is not verified as 4 KB, so this beta cannot convert on every 16 KB-page phone yet.
+          - These APKs are built from the Android debug variant and signed with the CI runner's debug key. Later beta builds can require reinstalling.
+          - CI validates unit tests, APK assembly, and native runtime presence; it is not a substitute for physical-device MP3/MP4 smoke tests.
+          - Download only content you own or are authorized to download. No DRM bypass, cookie import, or private/paid-content access is provided.
           EOF
 
       - name: Publish GitHub prerelease
@@ -140,9 +132,6 @@ jobs:
           prerelease: true
           make_latest: false
           files: |
-            dist/UBAHVO-${{ steps.version.outputs.version }}-arm64-v8a-debug.apk
-            dist/UBAHVO-${{ steps.version.outputs.version }}-armeabi-v7a-debug.apk
-            dist/UBAHVO-${{ steps.version.outputs.version }}-x86_64-debug.apk
-            dist/UBAHVO-${{ steps.version.outputs.version }}-x86-debug.apk
+            dist/UBAHVO-${{ steps.version.outputs.version }}-universal-debug.apk
             dist/SHA256SUMS.txt
             dist/RELEASE_NOTES.md
