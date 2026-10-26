@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -104,7 +105,7 @@ fun ConverterScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                state.ytdlpVersion?.let { "Versi tercatat: $it" }
+                                state.ytdlpVersion?.let { "Versi saat ini: $it" }
                                     ?: "Jika tautan tidak dapat diproses, coba perbarui dukungan.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -327,7 +328,7 @@ fun ConverterScreen(
                         !state.isUpdatingYtDlp && state.url.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
+                        .heightIn(min = 56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
@@ -399,11 +400,13 @@ fun ConverterScreen(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text(
-                        state.errorMessage.orEmpty(),
+                    Column(
                         modifier = Modifier.padding(14.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("Belum berhasil", fontWeight = FontWeight.SemiBold)
+                        Text(state.errorMessage.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
 
@@ -437,7 +440,7 @@ fun ConverterScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            "Lokasi: Download/YoutubeConvert",
+                            "Disimpan di: Download/YoutubeConvert",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -675,7 +678,7 @@ private fun FormatCard(
     Surface(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(112.dp),
+        modifier = modifier.heightIn(min = 124.dp),
         shape = RoundedCornerShape(18.dp),
         color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         else MaterialTheme.colorScheme.surface,
