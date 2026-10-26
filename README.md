@@ -2,7 +2,7 @@
 
 **UBAHVO** is a native Android app for converting supported YouTube video links into MP4 video or MP3 audio. The name is being broadened for the product's long-term direction, but **this beta is not yet a universal file converter**.
 
-**Current status: beta (`0.1.0-beta.6`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.7`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
@@ -17,13 +17,13 @@
 
 ## Get the beta
 
-Visit the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) to get an APK and its SHA-256 checksum. Choose the APK that matches your device ABI; **arm64-v8a is the typical choice for modern Android phones**. Architecture-specific APKs avoid the larger download size of a universal APK.
+Visit the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) to get an APK and its SHA-256 checksum. Choose the APK that matches your device ABI; **arm64-v8a is the typical choice for modern Android phones**. Architecture-specific APKs avoid the larger download size of a universal APK. Every published APK and CI artifact uses the UBAHVO name and includes the version and CPU architecture in its filename.
 
 The APKs are built from the Android debug variant and are intended for early testing, not as production-signed releases. The signing key is generated on the GitHub runner, so a later beta may require uninstalling a previous build before installing the update.
 
 ## Branding and compatibility
 
-The user-facing product name and launcher mark are now UBAHVO. To preserve upgrade compatibility during this first branding step, the Android `applicationId`, Kotlin package names, and current output folder (`Downloads/YoutubeConvert`) remain unchanged. Existing files in that folder are not moved or renamed.
+The user-facing product name, launcher mark, Android application class, and theme are branded as UBAHVO. New files are saved to `Download/UBAHVO`. Existing app-owned files in `Download/YoutubeConvert` are not moved or renamed, and remain visible in conversion history. The Android `applicationId` and Kotlin package name stay unchanged so this remains the same installed app rather than becoming a separate app.
 
 ## Native runtime compatibility
 
@@ -39,7 +39,7 @@ Open the repository root in Android Studio and install Android SDK Platform 36, 
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 ```
 
-Architecture-specific APKs are produced under `app/build/outputs/apk/debug/`, for example `app-arm64-v8a-debug.apk`.
+Architecture-specific APKs are produced under `app/build/outputs/apk/debug/`, for example `UBAHVO-0.1.0-beta.7-arm64-v8a-debug.apk`. The Gradle build renames the generated debug APKs automatically; the file name identifies the product, version, and CPU architecture.
 
 ## Product roadmap
 
