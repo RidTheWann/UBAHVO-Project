@@ -115,7 +115,8 @@ internal object StableYtDlpReleaseVerifier {
 
     internal fun isAllowedAssetHost(host: String): Boolean =
         host.equals("github.com", ignoreCase = true) ||
-            host.lowercase(Locale.ROOT).endsWith(".githubusercontent.com")
+            host.equals("release-assets.githubusercontent.com", ignoreCase = true) ||
+            host.equals("objects.githubusercontent.com", ignoreCase = true)
 
     private const val ASSET_NAME = "yt-dlp"
     private const val MAX_ASSET_BYTES = 20 * 1024 * 1024
@@ -140,7 +141,9 @@ internal class StableYtDlpUpdater(context: Context) {
             accept = "application/vnd.github+json"
         )
         val release = StableYtDlpReleaseVerifier.parseRelease(releaseBytes)
-        if (preferences.getString(PREFERENCES_VERSION, null) == release.tag) {
+        if (preferences.getString(PREFERENCES_VERSION, null) == release.tag &&
+            hasVerifiedInstalledPayload(release)
+        ) {
             return YtDlpUpdateResult(updated = false, version = release.tag, versionName = release.name)
         }
 
@@ -155,6 +158,22 @@ internal class StableYtDlpUpdater(context: Context) {
         preferences.edit().putString(PREFERENCES_VERSION, release.tag).apply()
 
         return YtDlpUpdateResult(updated = true, version = release.tag, versionName = release.name)
+    }
+
+    /**
+     * Preferences alone are not proof that the installed updater payload still exists or is valid.
+     * If it was removed or corrupted, fetch and verify the release again instead of reporting success.
+     */
+    private fun hasVerifiedInstalledPayload(release: StableYtDlpRelease): Boolean {
+        val installed = File(appContext.noBackupFilesDir, "youtubedl-android/yt-dlp/$ASSET_NAME")
+        if (!installed.isFile || installed.length() != release.sizeBytes) return false
+
+        return try {
+            StableYtDlpReleaseVerifier.verifyPayload(installed.readBytes(), release)
+            true
+        } catch (_: IOException) {
+            false
+        }
     }
 
     private fun installAtomically(payload: ByteArray) {

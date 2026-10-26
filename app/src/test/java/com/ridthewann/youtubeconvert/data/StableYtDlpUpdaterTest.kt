@@ -21,6 +21,8 @@ class StableYtDlpUpdaterTest {
     fun allowsOnlyGitHubReleaseAndAssetCdnHosts() {
         assertTrue(StableYtDlpReleaseVerifier.isAllowedAssetHost("github.com"))
         assertTrue(StableYtDlpReleaseVerifier.isAllowedAssetHost("release-assets.githubusercontent.com"))
+        assertTrue(StableYtDlpReleaseVerifier.isAllowedAssetHost("objects.githubusercontent.com"))
+        assertFalse(StableYtDlpReleaseVerifier.isAllowedAssetHost("attacker.release-assets.githubusercontent.com"))
         assertFalse(StableYtDlpReleaseVerifier.isAllowedAssetHost("github.com.attacker.example"))
         assertFalse(StableYtDlpReleaseVerifier.isAllowedAssetHost("attacker.example"))
     }
