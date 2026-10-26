@@ -108,6 +108,16 @@ internal object StableYtDlpReleaseVerifier {
         }
     }
 
+    /**
+     * Verify the bytes that are actually persisted on disk, not only the in-memory download.
+     */
+    internal fun verifyFilePayload(file: File, release: StableYtDlpRelease) {
+        if (!file.isFile || file.length() != release.sizeBytes) {
+            throw IOException("The on-disk yt-dlp file size does not match the official release metadata.")
+        }
+        verifyPayload(file.readBytes(), release)
+    }
+
     internal fun sha256Hex(payload: ByteArray): String =
         MessageDigest.getInstance("SHA-256")
             .digest(payload)
@@ -154,7 +164,7 @@ internal class StableYtDlpUpdater(context: Context) {
             accept = "application/octet-stream"
         )
         StableYtDlpReleaseVerifier.verifyPayload(payload, release)
-        installAtomically(payload)
+        installAtomically(payload, release)
         preferences.edit().putString(PREFERENCES_VERSION, release.tag).apply()
 
         return YtDlpUpdateResult(updated = true, version = release.tag, versionName = release.name)
@@ -169,14 +179,14 @@ internal class StableYtDlpUpdater(context: Context) {
         if (!installed.isFile || installed.length() != release.sizeBytes) return false
 
         return try {
-            StableYtDlpReleaseVerifier.verifyPayload(installed.readBytes(), release)
+            StableYtDlpReleaseVerifier.verifyFilePayload(installed, release)
             true
         } catch (_: IOException) {
             false
         }
     }
 
-    private fun installAtomically(payload: ByteArray) {
+    private fun installAtomically(payload: ByteArray, release: StableYtDlpRelease) {
         val directory = File(appContext.noBackupFilesDir, "youtubedl-android/yt-dlp")
         if (!directory.exists() && !directory.mkdirs()) {
             throw IOException("Could not create the private yt-dlp directory.")
@@ -185,37 +195,90 @@ internal class StableYtDlpUpdater(context: Context) {
 
         val target = File(directory, ASSET_NAME)
         val temporary = File(directory, "$ASSET_NAME.pending")
+        val backup = File(directory, "$ASSET_NAME.previous")
+        var previousFileBackedUp = false
+        var installAttempted = false
+
         try {
+            // Recover an interrupted install, or remove a leftover backup from a completed install.
+            if (backup.exists()) {
+                if (target.exists()) {
+                    if (!backup.delete()) {
+                        throw IOException("Could not remove a stale yt-dlp backup.")
+                    }
+                } else {
+                    moveReplacing(backup, target)
+                }
+            }
+
             FileOutputStream(temporary).use { output ->
                 output.write(payload)
                 output.fd.sync()
             }
-            if (temporary.length() != payload.size.toLong()) {
-                throw IOException("Could not verify the temporary yt-dlp file.")
+
+            // Verify the persisted staging file before it can replace the installed downloader.
+            StableYtDlpReleaseVerifier.verifyFilePayload(temporary, release)
+
+            if (target.exists()) {
+                if (!target.isFile) {
+                    throw IOException("The installed yt-dlp path is not a regular file.")
+                }
+                previousFileBackedUp = true
+                moveReplacing(target, backup)
             }
 
-            try {
-                java.nio.file.Files.move(
-                    temporary.toPath(),
-                    target.toPath(),
-                    java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING
-                )
-            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
-                java.nio.file.Files.move(
-                    temporary.toPath(),
-                    target.toPath(),
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING
-                )
-            }
+            installAttempted = true
+            moveReplacing(temporary, target)
 
-            if (!target.isFile || target.length() != payload.size.toLong()) {
-                throw IOException("The updated yt-dlp file could not be verified after installation.")
-            }
+            // Verify the bytes at their final path before accepting this update.
+            StableYtDlpReleaseVerifier.verifyFilePayload(target, release)
+
+            // A leftover backup is harmless; failure to delete it must not invalidate a verified install.
+            if (backup.exists()) backup.delete()
         } catch (error: Exception) {
             runCatching { temporary.delete() }
-            if (error is IOException) throw error
-            throw IOException("Could not install the verified yt-dlp update.", error)
+
+            var restoreFailure: Exception? = null
+            try {
+                if (previousFileBackedUp && backup.exists()) {
+                    if (target.exists() && !target.delete()) {
+                        throw IOException("Could not remove the failed yt-dlp installation before rollback.")
+                    }
+                    moveReplacing(backup, target)
+                } else if (installAttempted && !previousFileBackedUp &&
+                    target.exists() && !target.delete()
+                ) {
+                    throw IOException("Could not remove the failed yt-dlp installation.")
+                }
+            } catch (restoreError: Exception) {
+                restoreFailure = restoreError
+            }
+
+            if (error is IOException) {
+                restoreFailure?.let(error::addSuppressed)
+                throw error
+            }
+
+            val wrapped = IOException("Could not install the verified yt-dlp update.", error)
+            restoreFailure?.let(wrapped::addSuppressed)
+            throw wrapped
+        }
+    }
+
+    private fun moveReplacing(source: File, destination: File) {
+        try {
+            java.nio.file.Files.move(
+                source.toPath(),
+                destination.toPath(),
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+            )
+        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+            java.nio.file.Files.move(
+                source.toPath(),
+                destination.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+            )
         }
     }
 
