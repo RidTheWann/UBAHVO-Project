@@ -2,6 +2,15 @@
 
 All notable user-facing changes to UBAHVO are documented here.
 
+
+## 0.1.0-beta.9 — 2026-10-26
+
+- Added R8 keep rules for the yt-dlp and FFmpeg wrapper APIs that interact with runtime-loaded/native code.
+- Hardened startup so JVM native-linkage or media-engine initialization failures disable conversion without immediately closing the app.
+- Added regression tests for unsupported memory page sizes and media-engine startup failures.
+- Bumped Android versionCode to 9; physical-device smoke testing is still required.
+
+
 ## 0.1.0-beta.8 — 2026-10-26
 
 - Changed the Android application ID and Kotlin namespace/package names to `com.ridthewann.ubahvo`.
