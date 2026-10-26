@@ -1,0 +1,60 @@
+package com.ridthewann.ubahvo.core
+
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class NativeMediaStartupTest {
+    @Test
+    fun unsupportedPageSizeSkipsNativeInitialization() {
+        var initialized = false
+
+        val result = NativeMediaStartup.initialize(16384L) {
+            initialized = true
+        }
+
+        assertFalse(initialized)
+        assertFalse(result.engineReady)
+        assertNotNull(result.errorMessage)
+        assertTrue(result.errorMessage!!.contains("16 KB"))
+        assertNull(result.failure)
+    }
+
+    @Test
+    fun successfulInitializationEnablesEngine() {
+        val result = NativeMediaStartup.initialize(4096L) { }
+
+        assertTrue(result.engineReady)
+        assertNull(result.errorMessage)
+        assertNull(result.failure)
+    }
+
+    @Test
+    fun linkageErrorIsReportedInsteadOfEscapingIntoApplicationStartup() {
+        val failure = NoClassDefFoundError("test-missing-native-entry")
+
+        val result = NativeMediaStartup.initialize(4096L) {
+            throw failure
+        }
+
+        assertFalse(result.engineReady)
+        assertTrue(result.errorMessage!!.contains("Aplikasi tetap bisa dibuka"))
+        assertSame(failure, result.failure)
+    }
+
+    @Test
+    fun ordinaryInitializationFailureIsReportedInsteadOfEscaping() {
+        val failure = IllegalStateException("test-init-failure")
+
+        val result = NativeMediaStartup.initialize(4096L) {
+            throw failure
+        }
+
+        assertFalse(result.engineReady)
+        assertTrue(result.errorMessage!!.contains("Aplikasi tetap bisa dibuka"))
+        assertSame(failure, result.failure)
+    }
+}
