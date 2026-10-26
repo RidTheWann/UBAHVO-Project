@@ -51,7 +51,7 @@ The one universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHV
 
 Development is staged: branding and build artifact naming first, beginner-friendly UI next, then universal local-file conversion after each new format has verified dependencies, licensing, safety, and device compatibility.
 
-See [Product roadmap](docs/PRODUCT_ROADMAP.md). Items beyond the currently working YouTube-to-MP4/MP3 workflow are plans, not present features.
+See [Product roadmap](docs/PRODUCT_ROADMAP.md). Items beyond the currently working YouTube-to-MP4/MP3 workflow are plans, not present features. For the measured save-path bottleneck, language/runtime decision, and download-size trade-offs, see [Performance audit](docs/PERFORMANCE_AUDIT.md).
 
 ## Use responsibly
 
