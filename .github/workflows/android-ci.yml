@@ -43,7 +43,7 @@ jobs:
           gradle-version: "8.13"
           cache-provider: basic
 
-      - name: Run unit tests and assemble ABI-split APKs
+      - name: Run unit tests and assemble the universal ARM APK
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
       - name: Verify universal UBAHVO ARM APK
