@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Youtube Convert</string>
+    <string name="app_name">UBAHVO</string>
     <string name="no_media_player">Tidak ada aplikasi yang dapat membuka file ini.</string>
     <string name="share_output">Bagikan hasil konversi</string>
 </resources>

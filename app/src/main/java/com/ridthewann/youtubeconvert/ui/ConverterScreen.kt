@@ -474,7 +474,7 @@ fun ConverterScreen(
             )
 
             Text(
-                "YT CONVERT • RIDTHEWANN",
+                "UBAHVO • BY RIDTHEWANN",
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -619,7 +619,7 @@ private fun Header() {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                "Y▶",
+                "U",
                 color = Color.White,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black
@@ -628,7 +628,7 @@ private fun Header() {
         Spacer(Modifier.width(13.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                "YOUTUBE CONVERT",
+                "UBAHVO",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 0.4.sp
