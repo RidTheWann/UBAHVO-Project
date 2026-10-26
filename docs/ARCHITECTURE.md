@@ -7,7 +7,7 @@ The application uses a small layered structure with unidirectional UI state flow
 - `data/DownloadRepository.kt`: yt-dlp / FFmpeg request construction and execution off the main thread.
 - `data/OutputPublisher.kt`: copies the final artifact into public Downloads using MediaStore's pending-item lifecycle.
 - `data/YouTubeUrlValidator.kt`: validates HTTPS YouTube video URLs and rejects look-alike domains.
-- `YoutubeConvertApplication.kt`: initializes native media dependencies once per process.
+- `UbahvoApplication.kt`: initializes native media dependencies once per process.
 
 ## Media processing
 
