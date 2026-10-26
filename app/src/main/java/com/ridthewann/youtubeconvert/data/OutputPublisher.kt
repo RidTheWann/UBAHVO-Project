@@ -30,19 +30,24 @@ class OutputPublisher(private val context: Context) {
             ?: throw IOException("Android could not create the output file.")
 
         try {
+            val outputStream = resolver.openOutputStream(uri, "w")
+                ?: throw IOException("Android could not open the output stream.")
             source.inputStream().buffered().use { input ->
-                resolver.openOutputStream(uri, "w")?.buffered()?.use { output ->
-                    input.copyTo(output)
-                } ?: throw IOException("Android could not open the output stream.")
+                outputStream.buffered().use { output -> input.copyTo(output) }
             }
 
             val publishValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
             }
-            resolver.update(uri, publishValues, null, null)
+            val updatedRows = resolver.update(uri, publishValues, null, null)
+            if (updatedRows != 1) {
+                throw IOException("Android could not publish the completed output file.")
+            }
+
             return PublishedOutput(uri, displayName, mimeType)
         } catch (error: Exception) {
-            resolver.delete(uri, null, null)
+            // Do not leave a broken or permanently pending MediaStore entry behind.
+            runCatching { resolver.delete(uri, null, null) }
             throw error
         }
     }
