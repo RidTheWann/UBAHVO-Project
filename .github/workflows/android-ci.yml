@@ -32,10 +32,46 @@ jobs:
         with:
           packages: ""
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null
+
       - name: Install Android build and native runtime SDKs
+        shell: bash
         run: |
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
-          yes | sdkmanager --licenses >/dev/null
+          set -euo pipefail
+          NDK_VERSION="27.2.12479018"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$SDK_ROOT" ]]; then
+            echo "Android SDK root is not configured." >&2
+            exit 1
+          fi
+
+          NDK_ROOT="$SDK_ROOT/ndk/$NDK_VERSION"
+          ndk_is_ready() {
+            local host_root="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64"
+            [[ -x "$host_root/bin/clang" &&
+               -s "$host_root/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" &&
+               -s "$host_root/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" ]]
+          }
+
+          for attempt in 1 2 3; do
+            echo "Installing Android SDK packages (attempt $attempt/3)."
+            if sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;$NDK_VERSION" &&
+               ndk_is_ready; then
+              echo "Android SDK platform, Build Tools, and NDK are installed and verified."
+              exit 0
+            fi
+
+            echo "SDK/NDK installation attempt $attempt failed or left an incomplete NDK." >&2
+            # sdkmanager can leave a partial extraction and cached archive after a truncated download.
+            rm -rf "$NDK_ROOT" "$SDK_ROOT/.temp" "$HOME/.android/cache"
+            if [[ "$attempt" -lt 3 ]]; then
+              sleep "$((attempt * 10))"
+            fi
+          done
+
+          echo "Android NDK $NDK_VERSION could not be installed and verified after 3 attempts." >&2
+          exit 1
 
       - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
@@ -70,6 +106,23 @@ jobs:
               exit 1
             fi
           done
+
+          # Verify the minified APK kept the reflective no-argument constructor that
+          # Apache Commons Compress 1.12 uses to register AsiExtraField at class init.
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          APKANALYZER="$(find "$SDK_ROOT/cmdline-tools" -type f -name apkanalyzer -print -quit)"
+          if [[ -z "$APKANALYZER" || ! -x "$APKANALYZER" ]]; then
+            echo "apkanalyzer was not found in the installed Android SDK command-line tools." >&2
+            exit 1
+          fi
+          CLASS_DUMP="$(mktemp)"
+          trap 'rm -f "$CLASS_DUMP"' EXIT
+          "$APKANALYZER" dex code --class org.apache.commons.compress.archivers.zip.AsiExtraField "$APK" > "$CLASS_DUMP"
+          if ! grep -Fq '<init>()V' "$CLASS_DUMP"; then
+            echo "Minified APK is missing AsiExtraField's public no-argument constructor." >&2
+            exit 1
+          fi
+          echo "Apache Commons Compress reflection constructor is present in the minified APK."
 
       - name: Upload UBAHVO universal APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
