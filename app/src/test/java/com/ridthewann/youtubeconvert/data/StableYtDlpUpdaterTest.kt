@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.io.File
 import java.io.IOException
 
 class StableYtDlpUpdaterTest {
@@ -73,6 +74,35 @@ class StableYtDlpUpdaterTest {
             fail("Expected an IOException for an untrusted asset host.")
         } catch (_: IOException) {
             // Expected: updater fails closed on an arbitrary asset host.
+        }
+    }
+
+    @Test
+    fun diskVerifierRejectsSameLengthTampering() {
+        val expectedPayload =
+            "#!/usr/bin/env python3\\nprint('trusted')\\n".toByteArray(Charsets.UTF_8)
+        val tamperedPayload =
+            "#!/usr/bin/env python3\\nprint('changed')\\n".toByteArray(Charsets.UTF_8)
+        assertEquals(expectedPayload.size, tamperedPayload.size)
+
+        val release = StableYtDlpRelease(
+            tag = "2026.10.21",
+            name = "yt-dlp 2026.10.21",
+            assetUrl = "https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.21/yt-dlp",
+            sizeBytes = expectedPayload.size.toLong(),
+            sha256 = StableYtDlpReleaseVerifier.sha256Hex(expectedPayload)
+        )
+        val file = File.createTempFile("yt-dlp-verifier-", ".py")
+        try {
+            file.writeBytes(tamperedPayload)
+            try {
+                StableYtDlpReleaseVerifier.verifyFilePayload(file, release)
+                fail("Expected an IOException when on-disk bytes were modified.")
+            } catch (_: IOException) {
+                // Expected: persisted bytes must match the official digest as well.
+            }
+        } finally {
+            file.delete()
         }
     }
 
