@@ -46,31 +46,35 @@ jobs:
       - name: Run unit tests and assemble ABI-split APKs
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
-      - name: Verify UBAHVO ABI-specific native C++ runtime packaging
+      - name: Verify universal UBAHVO ARM APK
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+          VERSION="$(sed -n 's/^[[:space:]]*versionName = "\\([^"]*\\)".*/\\1/p' app/build.gradle.kts | head -n1)"
           if [[ -z "$VERSION" ]]; then
             echo "Could not read UBAHVO versionName from app/build.gradle.kts" >&2
             exit 1
           fi
-          for ABI in arm64-v8a armeabi-v7a x86_64 x86; do
-            APK="app/build/outputs/apk/debug/UBAHVO-${VERSION}-${ABI}-debug.apk"
-            if [[ ! -s "$APK" ]]; then
-              echo "Missing or empty branded ABI APK: $APK" >&2
+          APK="app/build/outputs/apk/debug/UBAHVO-${VERSION}-universal-debug.apk"
+          if [[ ! -s "$APK" ]]; then
+            echo "Missing or empty universal APK: $APK" >&2
+            exit 1
+          fi
+          for ABI in arm64-v8a armeabi-v7a; do
+            if ! unzip -Z1 "$APK" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
+              echo "Universal APK is missing the C++ runtime for $ABI." >&2
               exit 1
             fi
-            if ! unzip -Z1 "$APK" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
-              echo "The APK for $ABI is missing its C++ runtime." >&2
+            if ! unzip -Z1 "$APK" | grep -Eq "^lib/$ABI/[^/]+\\.so$"; then
+              echo "Universal APK is missing native libraries for $ABI." >&2
               exit 1
             fi
           done
 
-      - name: Upload UBAHVO ARM64 debug APK
+      - name: Upload UBAHVO universal APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ubahvo-arm64-v8a-debug-apk
-          path: app/build/outputs/apk/debug/UBAHVO-*-arm64-v8a-debug.apk
+          name: ubahvo-universal-arm-apk
+          path: app/build/outputs/apk/debug/UBAHVO-*-universal-debug.apk
           if-no-files-found: error
           retention-days: 14
