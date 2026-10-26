@@ -101,7 +101,7 @@ jobs:
           echo "Universal APK size: $APK_SIZE_BYTES bytes (target: less than 100,000,000 bytes)."
           {
             echo "### Universal APK size"
-            echo "- File: `$APK`"
+            printf -- '- File: `%s`\n' "$APK"
             echo "- Size: $APK_SIZE_BYTES bytes"
             echo "- Target: under 100,000,000 bytes"
           } >> "$GITHUB_STEP_SUMMARY"
