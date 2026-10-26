@@ -523,7 +523,7 @@ private fun RecentOutputsCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "Lima hasil terakhir, termasuk file dari folder lama",
+                        "Lima hasil terbaru, termasuk file lama jika ada",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
