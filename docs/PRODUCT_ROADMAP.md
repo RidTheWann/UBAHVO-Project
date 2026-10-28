@@ -6,18 +6,25 @@ This document defines the implementation order for the app. Each stage should be
 
 UBAHVO should be understandable without technical knowledge. The target audience includes children, adults, and older users. The app should explain actions in plain Indonesian first, clearly show what will happen to a file, and never make an irreversible action or an unclear choice the default.
 
-## Stage 1 — Branding
+## Stage 1 — Branding and native preflight
 
-Status: beta.8 branding follow-up updates application ID, Kotlin namespace/packages, APK and release names, and output folders. This package change creates a separate Android installation; it does not replace older app-ID installs.
+Status: beta.9 integration. This package uses the `com.ridthewann.ubahvo` Android application ID and Kotlin namespace/package. The Rust core is compiled for `arm64-v8a` and `armeabi-v7a`, then linked through a small C++ JNI adapter. A JVM parser fallback remains available if the native library cannot be loaded or input contains non-ASCII characters.
 
 - Use UBAHVO as the user-facing product name and launcher identity.
 - Keep developer attribution secondary: “by RidTheWann”.
-- Use `com.ridthewann.ubahvo` as the Android application ID and Kotlin namespace/package. New outputs use `Download/UBAHVO`; history queries `Download/YoutubeConvert` and the old package-owner ID where Android permits access, without moving legacy files.
-- Keep product claims accurate: the current beta processes supported YouTube URLs into MP4 video or MP3 audio only.
+- New outputs use `Download/UBAHVO`; history queries `Download/YoutubeConvert` and the old package-owner ID where Android permits access, without moving legacy files.
+- The current beta still processes supported YouTube URLs into MP4 video or MP3 audio only.
+- Avoid a separate metadata-only yt-dlp invocation before a download, and initialize the media engine once per Android process rather than on every conversion click.
+- Do not use native parsing as a substitute for URL validation, network safety, rights checks, or source-service restrictions.
+
+Acceptance gate:
+- Rust unit tests cover accepted and rejected video URLs, authority tricks, malformed escapes, and oversized input.
+- Kotlin URL tests remain green with the native library absent (JVM fallback) and the native library present (device/instrumented validation).
+- CI builds and verifies both native ARM ABIs and the universal APK.
 
 ## Stage 2 — Beginner-friendly and accessible UI
 
-The first beginner-friendly UI pass is being introduced in beta.6. Real-device accessibility and workflow smoke tests remain necessary before a stable release.
+The first beginner-friendly UI pass was introduced before beta.9. Real-device accessibility and workflow smoke tests remain necessary before a stable release.
 
 - Make the main workflow read from top to bottom: choose what to make, paste or share a link, choose a quality only when relevant, review permission guidance, then start.
 - Prefer clear action labels such as “Pilih video”, “Jadikan MP4”, “Jadikan MP3”, “Mulai”, “Batalkan”, and “Buka hasil” where those labels accurately describe the action.
@@ -25,7 +32,6 @@ The first beginner-friendly UI pass is being introduced in beta.6. Real-device a
 - Provide visible empty, loading, progress, completed, cancelled, and failed states.
 - Keep important touch targets comfortable, text readable at system font scaling, colors sufficiently contrasted, and icons paired with text labels where an icon alone could be ambiguous.
 - Preserve screen-reader semantics, meaningful content descriptions, keyboard/focus behavior, and Android back navigation.
-- Do not redesign the downloader/updater internals in the same change. Add or update Compose UI tests and run unit tests before merging.
 
 Acceptance gate:
 - A first-time user can identify the main action without reading technical setup instructions.
@@ -49,7 +55,8 @@ Acceptance gate:
 
 ## Release discipline
 
+- Run `cargo fmt --manifest-path app/src/main/rust/Cargo.toml -- --check` and `cargo test --manifest-path app/src/main/rust/Cargo.toml --locked`.
 - Run `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` on a configured Android development environment.
-- Verify the produced APK's label, icon, version, package ID, and required native libraries.
-- Smoke-test MP3, MP4, cancellation, updater success/failure, history, and file open/share actions on a real device.
+- Verify the produced APK's label, icon, version, package ID, both native ABIs, and required native libraries.
+- Smoke-test MP3, MP4, cancellation, updater success/failure, history, and file open/share actions on real 4 KB and 16 KB page-size devices before claiming broader compatibility.
 - Keep debug-signed beta artifacts clearly labelled as test builds. Do not describe a beta as a stable production release.
