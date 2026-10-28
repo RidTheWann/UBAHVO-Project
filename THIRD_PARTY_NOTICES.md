@@ -28,3 +28,9 @@ This application bundles media tooling through Gradle dependencies. Review the l
 - The upstream repository and bundled/release artifacts may have different license compositions. Consult its current license and third-party notices.
 
 This notice is not legal advice. The application source is licensed under GPL-3.0-only; third-party components remain governed by their own applicable licenses.
+
+## Rust native core
+
+- Source: `app/src/main/rust/`; this module currently has no third-party Cargo dependencies.
+- The Rust standard library and toolchain components are governed by the applicable Rust licensing terms, including MIT and Apache-2.0 licenses. Preserve applicable notices required by the toolchain distribution when redistributing binaries.
+- The Rust core is built as an ABI-specific static library and linked into `libubahvo_native.so` through the C++ JNI adapter.
