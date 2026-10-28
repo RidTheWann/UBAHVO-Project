@@ -13,3 +13,6 @@ captures/
 *.jks
 *.keystore
 secrets.properties
+
+# Rust/Cargo build artifacts (native archives are generated under app/build by Gradle).
+app/src/main/rust/target/
