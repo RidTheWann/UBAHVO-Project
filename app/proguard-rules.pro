@@ -14,3 +14,7 @@
 }
 
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+
+# The C++ JNI bridge resolves this native method by its Java symbol name.
+# Keep the class and method names stable when R8 minifies the beta APK.
+-keep class com.ridthewann.ubahvo.core.NativeUrlCore { *; }
