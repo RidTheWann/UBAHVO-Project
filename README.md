@@ -2,7 +2,7 @@
 
 **UBAHVO** is a native Android app for converting supported single-video YouTube links into MP4 video or MP3 audio. The universal APK covers 32-bit and 64-bit ARM phones; general local-file conversion is planned for a later stage.
 
-**Current status: beta (`0.1.0-beta.8`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.9`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
@@ -11,23 +11,24 @@
 - MP4 quality selection, progress reporting, cancellation, and Android share-sheet URL intake.
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
-- HTTPS YouTube URL validation and unit tests.
+- HTTPS YouTube URL validation with a small Rust native parser and a C++ JNI bridge for ordinary ASCII share links, plus a JVM parser fallback.
+- The conversion workflow avoids a separate metadata-only yt-dlp process before downloading, and no longer repeats media-engine initialization for every job.
 - User-triggered updates for the official stable yt-dlp script. The updater validates the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before installation, then verifies the staged and installed files and protects against rollback.
-- CI tests, builds the universal ARM APK, checks native C++ runtime packaging, and publishes beta prereleases.
+- CI runs Kotlin unit tests, Rust tests and formatting checks, builds the universal ARM APK, and checks that the ABI-matched native libraries are packaged.
 
 ## Download one universal APK
 
-Visit the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and download the single universal APK plus its SHA-256 checksum. The APK includes both `arm64-v8a` and `armeabi-v7a`, covering 64-bit and 32-bit ARM Android phones on Android 10 (API 29) or later. x86/x86_64 emulators and Intel Android devices are excluded.
+Visit the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and download the single universal APK plus its SHA-256 checksum when a beta release is published. The APK includes both `arm64-v8a` and `armeabi-v7a`, covering 64-bit and 32-bit ARM Android phones on Android 10 (API 29) or later. x86/x86_64 emulators and Intel Android devices are excluded.
 
-Download filename: `UBAHVO-0.1.0-beta.8-universal-debug.apk`.
+Download filename for this branch: `UBAHVO-0.1.0-beta.9-universal-debug.apk`.
 
-R8 code shrinking, resource shrinking, and compressed native-library packaging are enabled to reduce the download size. A universal APK still has to include both ARM variants, so it will be larger than a single-ABI APK.
+R8 code shrinking, resource shrinking, and compressed native-library packaging are enabled to reduce the download size. A universal APK still includes both ARM variants, so it is larger than a single-ABI APK. The Rust core has no third-party Cargo crates; the native bridge stays small and is limited to URL preflight.
 
-The APK is built from the Android debug variant and is intended for early testing, not as a production-signed release. The signing key is generated on the GitHub runner, so later betas can require reinstalling.
+**Signing status:** the current artifact is built from the Android debug variant and is intended for early testing, not as a production-signed release. The signing key is generated on the GitHub runner, so later beta builds can require reinstalling. Before a stable or store release, configure a protected, persistent release signing key and verify it in a release-only workflow.
 
 ## Application ID and existing installations
 
-The new application ID is `com.ridthewann.ubahvo`. Android treats beta.8 as a separate app from older builds using `com.ridthewann.youtubeconvert`; it will not update that installation in place. Install and test UBAHVO beta.8 before removing the old app, and back up important files first.
+The application ID is `com.ridthewann.ubahvo`. Android treats beta.9 as a separate app from older builds using `com.ridthewann.youtubeconvert`; it will not update that installation in place. Install and test UBAHVO beta.9 before removing the old app, and back up important files first.
 
 New outputs are saved to `Download/UBAHVO`. Existing files in `Download/YoutubeConvert` are not moved or renamed. Recent history attempts to include both folders and both package-owner IDs where Android permits access. If a legacy file is important, keep a backup outside the app before uninstalling an older build.
 
@@ -35,17 +36,20 @@ New outputs are saved to `Download/UBAHVO`. Existing files in `Download/YoutubeC
 
 The published `youtubedl-android` FFmpeg 0.18.1 artifact has an open upstream report because its bundled Rubber Band library needs `libc++_shared.so`, which is missing from that payload: https://github.com/yausername/youtubedl-android/issues/369. The build pins Android NDK 27.2.12479018 and stages an ABI-matched C++ runtime into FFmpeg’s private `usr/lib` directory because that directory is included in the wrapper’s `LD_LIBRARY_PATH`. CI verifies that the APK contains the required runtime; physical-device execution still needs validation.
 
-The same FFmpeg dependency has an upstream 16 KB memory-page alignment issue: https://github.com/yausername/youtubedl-android/issues/365. UBAHVO currently disables conversion unless it detects a verified 4 KB page size. Therefore this beta cannot yet convert on every 16 KB-page phone; the universal APK improves ABI coverage but does not fix this native dependency.
+The same FFmpeg dependency has an open 16 KB page-alignment issue in libraries inside its bundled runtime archive: https://github.com/yausername/youtubedl-android/issues/365. UBAHVO currently disables conversion unless it detects a verified 4 KB page size. The new C++/Rust bridge is built with 16 KB ELF alignment, but **that does not repair the separate prebuilt FFmpeg/WebP libraries**; this beta therefore cannot yet convert on every 16 KB-page phone.
 
 ## Build locally
 
-Open the repository root in Android Studio and install Android SDK Platform 36, Build Tools 36.0.0, and Android NDK 27.2.12479018. Use JDK 17 and Gradle 8.13.
+Install Android SDK Platform 36, Build Tools 36.0.0, CMake 3.22.1, Android NDK 27.2.12479018, JDK 17, Gradle 8.13, and the stable Rust toolchain. Install the Rust Android targets used by the universal APK:
 
 ```bash
+rustup target add aarch64-linux-android armv7-linux-androideabi
+cargo fmt --manifest-path app/src/main/rust/Cargo.toml -- --check
+cargo test --manifest-path app/src/main/rust/Cargo.toml --locked
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 ```
 
-The one universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.8-universal-debug.apk`.
+The universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.9-universal-debug.apk`. Gradle cross-compiles the Rust static library for both ARM targets and links it through the small C++ JNI adapter. A build must fail rather than silently ship only one ABI or omit the native core.
 
 ## Product roadmap
 
