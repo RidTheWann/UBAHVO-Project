@@ -1,5 +1,6 @@
 package com.ridthewann.ubahvo.data
 
+import com.ridthewann.ubahvo.core.NativeUrlCore
 import java.net.URI
 import java.net.URLDecoder
 import java.util.Locale
@@ -9,6 +10,8 @@ import java.util.Locale
  * look-alike hosts, insecure schemes, authority tricks, non-standard ports, and playlist-only URLs.
  */
 object YouTubeUrlValidator {
+    private const val MAX_URL_LENGTH = 4096
+
     private val supportedHosts = setOf(
         "youtube.com",
         "www.youtube.com",
@@ -20,8 +23,19 @@ object YouTubeUrlValidator {
 
     fun normalize(input: String): String? {
         val value = input.trim()
-        if (value.isEmpty() || value.any(Char::isWhitespace)) return null
+        if (value.isEmpty() || value.length > MAX_URL_LENGTH || value.any(Char::isWhitespace)) {
+            return null
+        }
 
+        // The native Rust core handles ordinary ASCII share links. Keep the established JVM
+        // parser as the reliable fallback when the native library is absent or input is non-ASCII.
+        val nativeResult = NativeUrlCore.tryNormalize(value)
+        if (nativeResult != null) return nativeResult.normalizedUrl
+
+        return normalizeWithJvm(value)
+    }
+
+    private fun normalizeWithJvm(value: String): String? {
         val uri = try {
             URI(value)
         } catch (_: Exception) {
