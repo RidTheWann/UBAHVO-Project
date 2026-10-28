@@ -39,7 +39,7 @@ pub fn normalize_youtube_url(input: &str) -> Option<&str> {
         return None;
     }
 
-    let host = raw_host.trim_end_matches('.').to_ascii_lowercase();
+    let host = raw_host.strip_suffix('.').unwrap_or(raw_host).to_ascii_lowercase();
     let is_short_host = host == "youtu.be";
     if !is_short_host
         && host != "youtube.com"
@@ -223,6 +223,7 @@ mod tests {
             "",
             "http://youtube.com/watch?v=abcdefghijk",
             "https://youtube.com.example.org/watch?v=abcdefghijk",
+            "https://youtube.com../watch?v=abcdefghijk",
             "https://attacker@youtube.com/watch?v=abcdefghijk",
             "https://youtube.com:8443/watch?v=abcdefghijk",
             "https://youtube.com/playlist?list=PL123",
@@ -249,9 +250,7 @@ mod tests {
 
     #[test]
     fn rejects_first_invalid_video_parameter_even_if_a_later_one_is_valid() {
-        assert!(normalize_youtube_url(
-            "https://youtube.com/watch?v=short&v=abcdefghijk"
-        )
-        .is_none());
+        let url = "https://youtube.com/watch?v=short&v=abcdefghijk";
+        assert!(normalize_youtube_url(url).is_none());
     }
 }
