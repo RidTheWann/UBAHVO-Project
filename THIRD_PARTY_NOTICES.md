@@ -21,6 +21,12 @@ This application bundles media tooling through Gradle dependencies. Review the l
 - Official documentation: https://developer.android.com/ndk/guides/cpp-support
 - The LLVM Project, including libc++, is available under the Apache License 2.0 with LLVM Exceptions. See the license included with the NDK distribution and retain applicable notices when redistributing.
 
+## Rust native core
+
+- Source: `app/src/main/rust/`, maintained in this repository; this module currently has no third-party Cargo dependencies.
+- The Rust standard library and toolchain components are governed by the applicable Rust licensing terms, including MIT and Apache-2.0 licenses. Preserve relevant notices required by the toolchain distribution for downstream redistribution.
+- The native core is compiled as an ABI-specific static library and linked into `libubahvo_native.so` by the C++ JNI adapter.
+
 ## yt-dlp
 
 - Upstream: https://github.com/yt-dlp/yt-dlp
