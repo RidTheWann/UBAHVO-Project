@@ -21,11 +21,13 @@ Scope: link-paste-to-save latency, native-language suitability, automatic link-s
 - Add tests for title marker parsing and the automatic-update schedule.
 - Report the actual universal APK size in CI. The 100,000,000-byte target is a measured budget, not an assumed result.
 
-## Why no new Rust/C/C++/C# module is added
+## Native-language scope and performance rationale
 
-Rust/JNI or another native language does not remove YouTube's network latency, the Python/yt-dlp extraction step, or the duplicated process that was found in the old save path. FFmpeg already supplies native media processing, implemented in C/C++. Adding another runtime and JNI boundary would increase code, build complexity, and potentially APK size without targeting the measured bottleneck. C# would add an additional managed-runtime stack without a justified role in this Android/Kotlin app.
+The measured save-path bottleneck was repeated yt-dlp extraction/process startup, not a CPU-bound operation in UBAHVO-owned Kotlin code. The main performance changes are therefore still the Kotlin pipeline improvements from beta.10: remove the metadata-only extraction, reuse yt-dlp's cache, and reduce unnecessary UI state updates. Those changes target the actual work the audit found.
 
-Native code should be introduced only if profiling identifies a CPU-bound operation in UBAHVO-owned code. The current best choice is to keep UI/orchestration in Kotlin, retain FFmpeg for media work, and remove redundant work from the network-bound save path.
+Beta.11 adds a deliberately small Rust validator behind a C++17 JNI adapter to meet the project's native-core requirement. It validates one supported HTTPS video URL before the downloader starts; it does **not** perform media decoding, conversion, networking, or source-service extraction. The module has no third-party Cargo dependencies and preserves the established JVM parser as a fallback.
+
+This is not evidence that the native parser makes the overall app measurably faster. JNI setup and the added native runtime may add overhead and APK bytes for a path that is not the dominant bottleneck. CI measures the resulting APK size; an on-device benchmark must compare time from tapping **Simpan** to first visible progress before claiming an end-to-end speedup. Do not move FFmpeg work into new Rust/C++ code unless profiling identifies a real workload that the existing FFmpeg engine cannot already handle efficiently.
 
 ## Verification and remaining limits
 
