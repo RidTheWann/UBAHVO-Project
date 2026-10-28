@@ -6,6 +6,8 @@ plugins {
 
 val bundledNdkVersion = "27.2.12479018"
 val generatedCppRuntimeDir = layout.buildDirectory.dir("generated/ffmpegCppRuntime/jniLibs")
+val generatedRustLibraryRoot = layout.buildDirectory.dir("generated/rustNative")
+val rustTargetBuildDir = layout.buildDirectory.dir("rustTarget")
 
 android {
     namespace = "com.ridthewann.ubahvo"
@@ -16,13 +18,20 @@ android {
         applicationId = "com.ridthewann.ubahvo"
         minSdk = 29
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.1.0-beta.8"
+        versionCode = 9
+        versionName = "0.1.0-beta.9"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // One direct-download APK supports 64-bit and 32-bit ARM Android phones.
         // x86/x86_64 are omitted to keep the universal APK smaller.
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
+        }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DUBAHVO_RUST_LIBRARY_ROOT=${generatedRustLibraryRoot.get().asFile.absolutePath}"
+                )
+            }
         }
     }
 
@@ -54,6 +63,13 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     packaging {
@@ -118,8 +134,97 @@ val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
     }
 }
 
+val prepareRustNativeCore = tasks.register("prepareRustNativeCore") {
+    group = "build setup"
+    description = "Cross-compiles the Rust URL-validation core into static libraries for both supported ARM ABIs."
+    inputs.files(fileTree("src/main/rust"))
+    outputs.dir(generatedRustLibraryRoot)
+    outputs.dir(rustTargetBuildDir)
+
+    doLast {
+        val osName = System.getProperty("os.name").lowercase()
+        val osArch = System.getProperty("os.arch").lowercase()
+        val isWindows = osName.contains("windows")
+        val hostTag = when {
+            isWindows -> "windows-x86_64"
+            osName.contains("mac") || osName.contains("darwin") ->
+                if (osArch.contains("arm64") || osArch.contains("aarch64")) "darwin-arm64" else "darwin-x86_64"
+            osName.contains("linux") ->
+                if (osArch.contains("arm64") || osArch.contains("aarch64")) "linux-aarch64" else "linux-x86_64"
+            else -> throw GradleException("Unsupported host OS for Rust Android cross-compilation: " + osName)
+        }
+
+        val ndkRoot = File(android.sdkDirectory, "ndk/" + bundledNdkVersion)
+        val linkerDirectory = File(ndkRoot, "toolchains/llvm/prebuilt/" + hostTag + "/bin")
+        if (!linkerDirectory.isDirectory) {
+            throw GradleException("Android NDK linker directory is missing: " + linkerDirectory.absolutePath)
+        }
+
+        data class RustTarget(val abi: String, val triple: String, val linker: String)
+        val targets = listOf(
+            RustTarget("arm64-v8a", "aarch64-linux-android", "aarch64-linux-android29-clang"),
+            RustTarget("armeabi-v7a", "armv7-linux-androideabi", "armv7a-linux-androideabi29-clang")
+        )
+        val rustRoot = file("src/main/rust")
+        val manifest = File(rustRoot, "Cargo.toml")
+        val cargoExecutable = System.getenv("CARGO") ?: if (isWindows) "cargo.exe" else "cargo"
+        val generatedRoot = generatedRustLibraryRoot.get().asFile
+        generatedRoot.deleteRecursively()
+
+        targets.forEach { target ->
+            val linkerName = target.linker + if (isWindows) ".cmd" else ""
+            val linker = File(linkerDirectory, linkerName)
+            if (!linker.isFile) {
+                throw GradleException(
+                    "Android NDK linker for ${target.abi} is missing: " + linker.absolutePath
+                )
+            }
+
+            val linkerEnvironment = "CARGO_TARGET_" +
+                target.triple.replace('-', '_').uppercase() + "_LINKER"
+            project.exec {
+                workingDir(rootProject.projectDir)
+                executable = cargoExecutable
+                args(
+                    "build",
+                    "--release",
+                    "--locked",
+                    "--manifest-path",
+                    manifest.absolutePath,
+                    "--target",
+                    target.triple
+                )
+                environment(linkerEnvironment, linker.absolutePath)
+                environment("CARGO_TARGET_DIR", rustTargetBuildDir.get().asFile.absolutePath)
+            }
+
+            val archive = File(
+                rustTargetBuildDir.get().asFile,
+                target.triple + "/release/libubahvo_native_core.a"
+            )
+            if (!archive.isFile || archive.length() <= 0L) {
+                throw GradleException("Rust failed to produce the native core archive for ${target.abi}.")
+            }
+
+            val destination = File(generatedRoot, target.abi + "/libubahvo_native_core.a")
+            if (!destination.parentFile.mkdirs() && !destination.parentFile.isDirectory) {
+                throw GradleException("Could not create Rust archive directory for ${target.abi}.")
+            }
+            archive.copyTo(destination, overwrite = true)
+        }
+    }
+}
+
 tasks.named("preBuild").configure {
-    dependsOn(prepareNdkCppRuntime)
+    dependsOn(prepareNdkCppRuntime, prepareRustNativeCore)
+}
+
+// CMake configures native builds before the Android packaging phase. Make the Rust archives
+// prerequisites of configuration as well as preBuild so a clean checkout is always buildable.
+tasks.configureEach {
+    if (name.startsWith("configureCMake")) {
+        dependsOn(prepareRustNativeCore)
+    }
 }
 
 // Android Gradle Plugin's default APK names expose the generic "app" module name.
