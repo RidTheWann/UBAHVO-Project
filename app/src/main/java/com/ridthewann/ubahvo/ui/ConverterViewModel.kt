@@ -310,7 +310,7 @@ class ConverterViewModel(
 
     private fun titleFromOutputName(displayName: String): String {
         val withoutExtension = displayName.substringBeforeLast('.', displayName)
-        val withoutVideoId = withoutExtension.replace(Regex(" \\[[A-Za-z0-9_-]{11}]$"), "")
+        val withoutVideoId = withoutExtension.replace(Regex(" \\[[A-Za-z0-9_-]{11}\\]$"), "")
         return withoutVideoId.takeIf { it.isNotBlank() } ?: "Video YouTube"
     }
 
