@@ -4,10 +4,8 @@ import android.content.Context
 import android.os.Environment
 import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
-import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.youtubedl_android.mapper.VideoInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -22,14 +20,6 @@ data class YtDlpUpdateResult(
 class DownloadRepository(context: Context) {
     private val appContext = context.applicationContext
     private val publisher = OutputPublisher(appContext)
-
-    suspend fun getInfo(url: String): VideoInfo = withContext(Dispatchers.IO) {
-        val request = YoutubeDLRequest(url).apply {
-            addOption("--no-playlist")
-            addOption("--no-warnings")
-        }
-        YoutubeDL.getInstance().getInfo(request)
-    }
 
     suspend fun updateYtDlp(): YtDlpUpdateResult = withContext(Dispatchers.IO) {
         StableYtDlpUpdater(appContext).update()
@@ -54,10 +44,8 @@ class DownloadRepository(context: Context) {
         }
 
         try {
-            // Re-init is idempotent and protects callers if Android recreates the process.
-            YoutubeDL.getInstance().init(appContext)
-            FFmpeg.getInstance().init(appContext)
-
+            // UbahvoApplication initializes the engine once per Android process and exposes
+            // engineReady. Re-initializing both executables for every click is redundant work.
             val request = buildRequest(url, mode, quality, outputDirectory)
             val callback: (Float, Long, String) -> Unit = { progress, eta, line ->
                 onProgress(progress.coerceIn(0f, 100f), eta.coerceAtLeast(0L), line)
