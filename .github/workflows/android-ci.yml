@@ -27,6 +27,23 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Rust and test native core
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+            sh /tmp/rustup-init.sh -y --profile minimal --component rustfmt
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          else
+            rustup toolchain install stable --profile minimal --component rustfmt
+            rustup default stable
+          fi
+          rustup target add aarch64-linux-android armv7-linux-androideabi
+          cargo fmt --manifest-path app/src/main/rust/Cargo.toml -- --check
+          cargo test --manifest-path app/src/main/rust/Cargo.toml --locked
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
@@ -56,7 +73,7 @@ jobs:
 
           for attempt in 1 2 3; do
             echo "Installing Android SDK packages (attempt $attempt/3)."
-            if sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;$NDK_VERSION" &&
+            if sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;$NDK_VERSION" &&
                ndk_is_ready; then
               echo "Android SDK platform, Build Tools, and NDK are installed and verified."
               exit 0
@@ -111,6 +128,10 @@ jobs:
           for ABI in arm64-v8a armeabi-v7a; do
             if ! unzip -Z1 "$APK" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
               echo "Universal APK is missing the C++ runtime for $ABI." >&2
+              exit 1
+            fi
+            if ! unzip -Z1 "$APK" | grep -Fqx "lib/$ABI/libubahvo_native.so"; then
+              echo "Universal APK is missing the UBAHVO Rust/C++ native core for $ABI." >&2
               exit 1
             fi
             if ! unzip -Z1 "$APK" | grep -Eq "^lib/$ABI/[^/]+\\.so$"; then
