@@ -5,6 +5,7 @@
 - Add an optional Rust-based YouTube URL preflight, compiled for both supported ARM ABIs and linked through a minimal C++ JNI adapter.
 - Preserve JVM URL validation as a fallback if the native library is unavailable or the input contains non-ASCII characters.
 - Add Rust formatting/unit-test gates and native-library checks to Android CI and beta-release builds.
+- Avoid reinitializing yt-dlp/FFmpeg for every Save tap; the app initializes them once per process, and Android process recreation repeats startup initialization as needed.
 - Keep the existing beta.10 download-path improvements, yt-dlp cache, automatic stable updater, and minified-APK reflection safeguards.
 - The native module has not yet demonstrated an end-to-end speedup; CI measures the final universal APK size, and physical-device smoke testing remains required before claiming release readiness.
 All notable user-facing changes to UBAHVO are documented here.
