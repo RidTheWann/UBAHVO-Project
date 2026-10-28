@@ -1,7 +1,7 @@
 #include <jni.h>
 
+#include <cstddef>
 #include <cstdint>
-#include <cstring>
 
 extern "C" std::int32_t ubahvo_normalize_youtube_url(
     const char* input,
