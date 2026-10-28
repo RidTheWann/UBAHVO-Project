@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Environment
 import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
-import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.Dispatchers
@@ -45,10 +44,9 @@ class DownloadRepository(context: Context) {
         }
 
         try {
-            // Re-init is idempotent and protects callers if Android recreates the process.
-            YoutubeDL.getInstance().init(appContext)
-            FFmpeg.getInstance().init(appContext)
-
+            // UbahvoApplication initializes both engines once per Android process and gates
+            // this path with engineReady. Re-initializing both native runtimes here repeats work
+            // for each Save tap; process recreation runs Application.onCreate again automatically.
             val request = buildRequest(url, mode, quality, outputDirectory)
             val callback: (Float, Long, String) -> Unit = { progress, eta, line ->
                 onProgress(progress.coerceIn(0f, 100f), eta.coerceAtLeast(0L), line)
