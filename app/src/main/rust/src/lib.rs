@@ -42,7 +42,10 @@ pub fn normalize_youtube_url(input: &str) -> Option<&str> {
     }
 
     // Match Java's removeSuffix(".") semantics: accept at most one DNS trailing dot.
-    let host = raw_host.strip_suffix('.').unwrap_or(raw_host).to_ascii_lowercase();
+    let host = raw_host
+        .strip_suffix('.')
+        .unwrap_or(raw_host)
+        .to_ascii_lowercase();
     let is_short_host = host == "youtu.be";
     if !is_short_host
         && host != "youtube.com"
@@ -258,7 +261,10 @@ mod tests {
 
     #[test]
     fn rejects_oversized_input() {
-        let url = format!("https://youtube.com/watch?v=abcdefghijk&x={}", "a".repeat(5000));
+        let url = format!(
+            "https://youtube.com/watch?v=abcdefghijk&x={}",
+            "a".repeat(5000)
+        );
         assert!(normalize_youtube_url(&url).is_none());
     }
 
