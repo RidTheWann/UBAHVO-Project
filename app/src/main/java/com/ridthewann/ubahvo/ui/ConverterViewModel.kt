@@ -225,7 +225,7 @@ class ConverterViewModel(
                     isBusy = true,
                     progress = 0f,
                     etaSeconds = 0L,
-                    stageMessage = "Memeriksa tautan…",
+                    stageMessage = "Menyiapkan unduhan…",
                     videoTitle = null,
                     errorMessage = null,
                     outputUri = null,
@@ -235,14 +235,8 @@ class ConverterViewModel(
             }
 
             try {
-                val info = repository.getInfo(normalizedUrl)
-                _uiState.update {
-                    it.copy(
-                        videoTitle = info.title ?: info.fulltitle ?: "Video YouTube",
-                        stageMessage = "Memulai konversi…"
-                    )
-                }
-
+                // Do not run a separate getInfo() process first: the actual download performs its
+                // own extraction, so a metadata preflight repeats network work and delays progress.
                 val result = repository.download(
                     url = normalizedUrl,
                     mode = snapshot.mode,
@@ -251,8 +245,8 @@ class ConverterViewModel(
                 ) { progress, eta, line ->
                     _uiState.update {
                         it.copy(
-                            progress = progress,
-                            etaSeconds = eta,
+                            progress = progress.coerceIn(0f, 100f),
+                            etaSeconds = eta.coerceAtLeast(0L),
                             stageMessage = if (snapshot.mode == OutputMode.MP3) {
                                 "Mengambil audio dan menyiapkan MP3…"
                             } else {
@@ -269,6 +263,7 @@ class ConverterViewModel(
                         progress = 100f,
                         etaSeconds = 0L,
                         stageMessage = "Selesai — disimpan ke Download/UBAHVO.",
+                        videoTitle = titleFromOutputName(result.displayName),
                         outputUri = result.uri,
                         outputName = result.displayName,
                         outputMimeType = result.mimeType,
@@ -311,6 +306,12 @@ class ConverterViewModel(
                 errorMessage = null
             )
         }
+    }
+
+    private fun titleFromOutputName(displayName: String): String {
+        val withoutExtension = displayName.substringBeforeLast('.', displayName)
+        val withoutVideoId = withoutExtension.replace(Regex(" \\[[A-Za-z0-9_-]{11}]$"), "")
+        return withoutVideoId.takeIf { it.isNotBlank() } ?: "Video YouTube"
     }
 
     private fun friendlyError(error: Exception): String {
