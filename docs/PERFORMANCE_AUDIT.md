@@ -23,7 +23,7 @@ Scope: link-paste-to-save latency, native-language suitability, automatic link-s
 
 ## Native-language scope and performance rationale
 
-The measured save-path bottleneck was repeated yt-dlp extraction/process startup, not a CPU-bound operation in UBAHVO-owned Kotlin code. The main performance changes are therefore still the Kotlin pipeline improvements from beta.10: remove the metadata-only extraction, reuse yt-dlp's cache, and reduce unnecessary UI state updates. Those changes target the actual work the audit found.
+The measured save-path bottleneck was repeated yt-dlp extraction/process startup, not a CPU-bound operation in UBAHVO-owned Kotlin code. The main performance changes are the Kotlin pipeline improvements introduced in beta.10: remove the metadata-only extraction, reuse yt-dlp's cache, reduce unnecessary UI state updates, and avoid reinitializing yt-dlp/FFmpeg on every Save tap. The application gate prevents starting conversion when startup initialization failed; Android process recreation reruns Application.onCreate, so per-job engine reinitialization is redundant. Those changes target the actual work the audit found.
 
 Beta.11 adds a deliberately small Rust validator behind a C++17 JNI adapter to meet the project's native-core requirement. It validates one supported HTTPS video URL before the downloader starts; it does **not** perform media decoding, conversion, networking, or source-service extraction. The module has no third-party Cargo dependencies and preserves the established JVM parser as a fallback.
 
