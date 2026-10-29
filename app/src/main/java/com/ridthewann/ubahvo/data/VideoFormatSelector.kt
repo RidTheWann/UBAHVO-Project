@@ -15,7 +15,7 @@ internal object VideoFormatSelector {
         val preferredMp4 =
             "(bestvideo[ext=mp4]$heightLimit+bestaudio[ext=m4a]/best[ext=mp4]$heightLimit)"
         val anyContainer =
-            "(bestvideo$heightLimit+bestaudio/best$heightLimit)"
+            "(bestvideo$heightLimit+bestaudio[ext=m4a]/best$heightLimit)/(bestvideo$heightLimit+bestaudio/best$heightLimit)"
         return "$preferredMp4/$anyContainer"
     }
 }
