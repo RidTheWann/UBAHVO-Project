@@ -33,12 +33,8 @@ class MainActivity : ComponentActivity() {
                 contract = ActivityResultContracts.OpenDocument()
             ) { uri ->
                 if (uri != null) {
-                    runCatching {
-                        contentResolver.takePersistableUriPermission(
-                            uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
-                    }
+                    // This URI is consumed by the current one-shot conversion only. Do not persist
+                    // a read grant across reboots; the input is copied into private cache at start.
                     val details = queryLocalFileDetails(uri)
                     viewModel.onLocalFileSelected(
                         uri = uri,
