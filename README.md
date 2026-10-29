@@ -2,13 +2,13 @@
 
 **UBAHVO** is a native Android media converter for supported HTTPS media links from multiple sites and user-selected local audio/video files. The current output formats are MP4 video and MP3 audio. Direct downloads include a universal APK and smaller ABI-specific APKs for ARM phones and x86_64 emulators.
 
-**Current status: beta (`0.1.0-beta.14`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.15`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
 - Native Android app built with Kotlin, Jetpack Compose, Material 3, ViewModel, and StateFlow.
 - Converts supported HTTPS media links from multiple sites to MP4 video or MP3 audio through the Android yt-dlp wrapper and FFmpeg. Supported sites are extractor-dependent and can change as websites change; playlists and batch downloads are not supported.
-- Remote-link video quality options up to 8K (4320p), with 4K, 1440p, 1080p, and lower caps when those formats are offered by the source. Selection prefers MP4-compatible streams and falls back to other source containers for remuxing where possible.
+- Remote-link video quality options use explicit resolution caps: 8K (4320p), 4K (2160p), 1440p, 1080p, 720p, 480p, and 360p. There is no unbounded “best” option. The 8K and 4K choices show compatibility warnings because playback depends on the phone's codec/decoder support; a successful download does not guarantee smooth playback. Selection prefers MP4-compatible streams and falls back to other source containers for remuxing where possible.
 - Progress reporting for extraction, format selection, transfer, and post-processing; segmented DASH/HLS downloads request up to four concurrent fragments. Initial extraction still depends on the site and network.
 - Local audio/video conversion to MP3 or MP4 from files selected through Android's document picker. FFprobe inspects the streams before FFmpeg runs; selected input is copied into app-private cache, and temporary files are removed when the job finishes or is cancelled.
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
@@ -23,7 +23,7 @@
 
 Open the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and choose a build that matches your device:
 
-- **Universal APK — easiest:** `UBAHVO-0.1.0-beta.14-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
+- **Universal APK — easiest:** `UBAHVO-0.1.0-beta.15-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
 - **Most current Android phones:** `UBAHVO-0.1.0-beta.14-arm64-v8a-debug.apk` is for 64-bit ARM phones.
 - **Older 32-bit ARM devices:** `UBAHVO-0.1.0-beta.14-armeabi-v7a-debug.apk` is for supported 32-bit ARM phones.
 - **Emulators / compatible Intel Android devices:** `UBAHVO-0.1.0-beta.14-x86_64-debug.apk` is for x86_64 Android environments.

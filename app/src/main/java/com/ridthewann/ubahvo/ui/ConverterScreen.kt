@@ -284,17 +284,23 @@ fun ConverterScreen(
                                         selected = state.quality == quality,
                                         onClick = { viewModel.setQuality(quality) },
                                         enabled = !state.isBusy && !state.isUpdatingYtDlp,
-                                        label = { Text(quality.label) }
+                                        label = {
+                                            Text(
+                                                when (quality) {
+                                                    VideoQuality.P4320 -> "8K (4320p) ⚠"
+                                                    VideoQuality.P2160 -> "4K (2160p) ⚠"
+                                                    else -> quality.label
+                                                }
+                                            )
+                                        }
                                     )
                                 }
                             }
                             val qualityHint = when (state.quality) {
-                                VideoQuality.BEST ->
-                                    "Terbaik memilih format tertinggi yang tersedia dari sumber."
                                 VideoQuality.P4320 ->
-                                    "8K (4320p) hanya tersedia jika sumber menyediakannya. Ukuran file dan waktu unduh bisa sangat besar."
+                                    "⚠ Peringatan 8K: tidak semua HP mendukung decoding 8K, terutama video 60 FPS. File dapat berhasil diunduh tetapi hanya menampilkan gambar diam atau gagal diputar. Jika tidak berjalan, pilih 4K atau 1080p."
                                 VideoQuality.P2160 ->
-                                    "4K (2160p) hanya tersedia jika sumber menyediakannya; ukuran file biasanya besar."
+                                    "⚠ Peringatan 4K: kompatibilitas bergantung pada codec, frame rate, dan decoder HP. Jika video macet atau tidak bergerak, coba 1080p."
                                 VideoQuality.P1440 ->
                                     "1440p hanya tersedia jika sumber menyediakannya."
                                 else ->

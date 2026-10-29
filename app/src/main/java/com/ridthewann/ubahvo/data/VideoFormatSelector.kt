@@ -11,7 +11,7 @@ import com.ridthewann.ubahvo.core.VideoQuality
  */
 internal object VideoFormatSelector {
     fun forQuality(quality: VideoQuality): String {
-        val heightLimit = quality.maxHeight?.let { "[height<=$it]" }.orEmpty()
+        val heightLimit = "[height<=${quality.maxHeight}]"
         val preferredMp4 =
             "(bestvideo[ext=mp4]$heightLimit+bestaudio[ext=m4a]/best[ext=mp4]$heightLimit)"
         val anyContainer =
