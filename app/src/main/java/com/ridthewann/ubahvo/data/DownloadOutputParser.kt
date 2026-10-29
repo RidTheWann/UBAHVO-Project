@@ -28,7 +28,8 @@ internal object DownloadOutputParser {
                 normalized.contains("extracting url: https://") ->
                 "Membuka tautan sumber…"
 
-            normalized.contains("downloading player api") ||
+            normalized.contains("player api json") ||
+                normalized.contains("downloading player api") ||
                 normalized.contains("downloading m3u8 information") ||
                 normalized.contains("downloading dash manifest") ||
                 normalized.contains("downloading mpd manifest") ->
