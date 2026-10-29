@@ -122,9 +122,13 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Test, build ABI APKs, and package an optimized AAB candidate
+      - name: Run Android tests and build ABI APKs
         if: steps.existing.outputs.exists != 'true'
-        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Build optimized AAB candidate without ABI splits
+        if: steps.existing.outputs.exists != 'true'
+        run: gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease
 
       - name: Prepare the universal APK and checksum
         if: steps.existing.outputs.exists != 'true'
