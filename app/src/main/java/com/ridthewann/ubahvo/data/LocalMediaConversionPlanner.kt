@@ -6,7 +6,9 @@ import com.ridthewann.ubahvo.core.OutputMode
 internal data class LocalMediaProbeInfo(
     val hasVideo: Boolean,
     val hasAudio: Boolean,
-    val durationSeconds: Double?
+    val durationSeconds: Double?,
+    val videoStreamIndex: Int? = null,
+    val audioStreamIndex: Int? = null
 )
 
 /** Pure conversion planning: no subprocess execution and no shell interpolation. */
@@ -21,13 +23,23 @@ internal object LocalMediaConversionPlanner {
         val root = objectMapper.readTree(output.substring(start, end + 1))
         var hasVideo = false
         var hasAudio = false
+        var videoStreamIndex: Int? = null
+        var audioStreamIndex: Int? = null
         val streams = root.path("streams")
         if (streams.isArray) {
             for (stream in streams) {
+                val streamIndex = stream.path("index").asInt(-1).takeIf { it >= 0 }
                 when (stream.path("codec_type").asText()) {
-                    "audio" -> hasAudio = true
-                    "video" -> if (stream.path("disposition").path("attached_pic").asInt(0) != 1) {
-                        hasVideo = true
+                    "audio" -> {
+                        hasAudio = true
+                        if (audioStreamIndex == null) audioStreamIndex = streamIndex
+                    }
+                    "video" -> {
+                        val attachedPicture = stream.path("disposition").path("attached_pic").asInt(0) == 1
+                        if (!attachedPicture) {
+                            hasVideo = true
+                            if (videoStreamIndex == null) videoStreamIndex = streamIndex
+                        }
                     }
                 }
             }
@@ -38,7 +50,7 @@ internal object LocalMediaConversionPlanner {
         val duration = root.path("format").path("duration").asText()
             .toDoubleOrNull()
             ?.takeIf { it.isFinite() && it > 0.0 }
-        return LocalMediaProbeInfo(hasVideo, hasAudio, duration)
+        return LocalMediaProbeInfo(hasVideo, hasAudio, duration, videoStreamIndex, audioStreamIndex)
     }
 
     fun encoderNames(output: String): Set<String> = output.lineSequence()
@@ -61,7 +73,8 @@ internal object LocalMediaConversionPlanner {
                     "libshine" in availableEncoders -> "libshine"
                     else -> throw IllegalArgumentException("The bundled FFmpeg build has no MP3 encoder.")
                 }
-                args += listOf("-map", "0:a:0", "-vn", "-sn", "-dn", "-c:a", encoder)
+                val audioMap = media.audioStreamIndex?.let { "0:$it" } ?: "0:a:0"
+                args += listOf("-map", audioMap, "-vn", "-sn", "-dn", "-c:a", encoder)
                 if (encoder == "libmp3lame") args += listOf("-q:a", "2")
                 else args += listOf("-b:a", "192k")
                 args += listOf("-f", "mp3")
@@ -75,8 +88,12 @@ internal object LocalMediaConversionPlanner {
                         "The bundled FFmpeg build has no supported MP4 video encoder."
                     )
                 }
-                args += listOf("-map", "0:v:0")
-                if (media.hasAudio) args += listOf("-map", "0:a:0?")
+                val videoMap = media.videoStreamIndex?.let { "0:$it" } ?: "0:v:0"
+                args += listOf("-map", videoMap)
+                if (media.hasAudio) {
+                    val audioMap = media.audioStreamIndex?.let { "0:$it" } ?: "0:a:0?"
+                    args += listOf("-map", audioMap)
+                }
                 args += listOf("-sn", "-dn", "-c:v", encoder)
                 if (encoder == "libx264") args += listOf("-preset", "veryfast", "-crf", "23")
                 else args += listOf("-q:v", "4")
