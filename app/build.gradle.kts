@@ -40,7 +40,9 @@ android {
     // Produce small per-ABI APKs and retain one universal APK for users who prefer one download.
     splits {
         abi {
-            isEnable = true
+            // AGP cannot shrink split APK resources and bundle an AAB in the same variant task graph.
+            // CI uses -Pubahvo.bundleOnly=true for its separate App Bundle build invocation.
+            isEnable = !providers.gradleProperty("ubahvo.bundleOnly").isPresent
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = true
