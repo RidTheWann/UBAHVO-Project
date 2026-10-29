@@ -1,13 +1,13 @@
 # UBAHVO for Android
 
-**UBAHVO** is a native Android app for converting supported single-video YouTube links into MP4 video or MP3 audio. The universal APK covers 32-bit and 64-bit ARM phones; general local-file conversion is planned for a later stage.
+**UBAHVO** is a native Android app for converting supported HTTPS media links from multiple sites into MP4 video or MP3 audio. The universal APK covers 32-bit and 64-bit ARM phones; general local-file conversion is planned for a later stage.
 
-**Current status: beta (`0.1.0-beta.11`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.12`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
 - Native Android app built with Kotlin, Jetpack Compose, Material 3, ViewModel, and StateFlow.
-- Converts supported single-video YouTube URLs to MP4 video or MP3 audio through the Android yt-dlp wrapper and FFmpeg.
+- Converts supported HTTPS media links from multiple sites to MP4 video or MP3 audio through the Android yt-dlp wrapper and FFmpeg. Supported sites are extractor-dependent and can change as websites change; playlists and batch downloads are not supported.
 - MP4 quality selection, progress reporting, cancellation, and Android share-sheet URL intake.
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
@@ -21,7 +21,7 @@
 
 Visit the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and download the single universal APK plus its SHA-256 checksum. The APK includes both `arm64-v8a` and `armeabi-v7a`, covering 64-bit and 32-bit ARM Android phones on Android 10 (API 29) or later. x86/x86_64 emulators and Intel Android devices are excluded.
 
-Download filename: `UBAHVO-0.1.0-beta.11-universal-debug.apk`.
+Download filename: `UBAHVO-0.1.0-beta.12-universal-debug.apk`.
 
 R8 code shrinking, resource shrinking, and Indonesian/English resource filtering are enabled. Unused Android UI test/debug tooling is excluded from the downloadable APK. A universal APK still includes both ARM variants and the bundled Python/FFmpeg runtimes, so its download size is inherently higher than a single-ABI package. Beta.10 measured 106,692,084 bytes; the native Rust/C++ integration may increase the size, so the beta.11 CI job measures the actual artifact instead of assuming that it meets the 100,000,000-byte target.
 
@@ -52,13 +52,13 @@ cargo test --manifest-path app/src/main/rust/Cargo.toml --locked
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 ```
 
-The one universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.11-universal-debug.apk`.
+The one universal APK is produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.12-universal-debug.apk`.
 
 ## Product roadmap
 
 Development is staged: branding and build artifact naming first, beginner-friendly UI next, then universal local-file conversion after each new format has verified dependencies, licensing, safety, and device compatibility.
 
-See [Product roadmap](docs/PRODUCT_ROADMAP.md). Items beyond the currently working YouTube-to-MP4/MP3 workflow are plans, not present features. For the measured save-path bottleneck, language/runtime decision, and download-size trade-offs, see [Performance audit](docs/PERFORMANCE_AUDIT.md).
+See [Product roadmap](docs/PRODUCT_ROADMAP.md). Items beyond the currently working supported-media-link-to-MP4/MP3 workflow are plans, not present features. For the measured save-path bottleneck, language/runtime decision, and download-size trade-offs, see [Performance audit](docs/PERFORMANCE_AUDIT.md).
 
 ## Use responsibly
 
