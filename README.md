@@ -8,7 +8,8 @@
 
 - Native Android app built with Kotlin, Jetpack Compose, Material 3, ViewModel, and StateFlow.
 - Converts supported HTTPS media links from multiple sites to MP4 video or MP3 audio through the Android yt-dlp wrapper and FFmpeg. Supported sites are extractor-dependent and can change as websites change; playlists and batch downloads are not supported.
-- MP4 quality selection for remote links, progress reporting, cancellation, and Android share-sheet URL intake.
+- Remote-link video quality options up to 8K (4320p), with 4K, 1440p, 1080p, and lower caps when those formats are offered by the source. Selection prefers MP4-compatible streams and falls back to other source containers for remuxing where possible.
+- Progress reporting for extraction, format selection, transfer, and post-processing; segmented DASH/HLS downloads request up to four concurrent fragments. Initial extraction still depends on the site and network.
 - Local audio/video conversion to MP3 or MP4 from files selected through Android's document picker. FFprobe inspects the streams before FFmpeg runs; selected input is copied into app-private cache, and temporary files are removed when the job finishes or is cancelled.
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
