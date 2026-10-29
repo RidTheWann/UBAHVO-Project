@@ -112,15 +112,21 @@ fun ConverterScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Button(
+                            onClick = { onOpenAppUpdate(update) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Lihat pembaruan")
+                        }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Button(onClick = { onOpenAppUpdate(update) }) {
-                                Text("Lihat pembaruan")
-                            }
-                            OutlinedButton(onClick = onEnableUpdateNotifications) {
+                            OutlinedButton(
+                                onClick = onEnableUpdateNotifications,
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Text("Pengaturan notifikasi")
                             }
                             TextButton(onClick = onDismissAppUpdate) {
