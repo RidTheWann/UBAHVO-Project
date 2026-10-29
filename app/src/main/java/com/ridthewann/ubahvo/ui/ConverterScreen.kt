@@ -288,8 +288,20 @@ fun ConverterScreen(
                                     )
                                 }
                             }
+                            val qualityHint = when (state.quality) {
+                                VideoQuality.BEST ->
+                                    "Terbaik memilih format tertinggi yang tersedia dari sumber."
+                                VideoQuality.P4320 ->
+                                    "8K (4320p) hanya tersedia jika sumber menyediakannya. Ukuran file dan waktu unduh bisa sangat besar."
+                                VideoQuality.P2160 ->
+                                    "4K (2160p) hanya tersedia jika sumber menyediakannya; ukuran file biasanya besar."
+                                VideoQuality.P1440 ->
+                                    "1440p hanya tersedia jika sumber menyediakannya."
+                                else ->
+                                    "Kualitas dibatasi ke resolusi yang dipilih jika tersedia; sumber mungkin hanya menawarkan resolusi lebih rendah."
+                            }
                             Text(
-                                "Kualitas lebih tinggi biasanya menghasilkan file yang lebih besar.",
+                                qualityHint,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
