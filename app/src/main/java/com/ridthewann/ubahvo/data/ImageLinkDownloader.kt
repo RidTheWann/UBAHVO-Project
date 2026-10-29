@@ -48,7 +48,7 @@ internal class ImageLinkDownloader(
             onProgress(0f, 0L, "IMAGE_STAGE:Memeriksa tautan gambar publik…")
             val page = openFollowingRedirects(processId, url, IMAGE_ACCEPT)
             val pageInput = BufferedInputStream(page.connection.inputStream)
-            val pagePrefix = readPrefix(pageInput)
+            val pagePrefix = ImagePrefixReader.readPrefix(pageInput, HEADER_BYTES)
             val pageType = mediaType(page.connection.getHeaderField("Content-Type"))
             val htmlPage = pageType == "text/html" || pageType == "application/xhtml+xml" || looksLikeHtml(pagePrefix)
             val staged = if (!htmlPage) {
@@ -77,7 +77,7 @@ internal class ImageLinkDownloader(
                     try {
                         val imageResponse = openFollowingRedirects(processId, candidate, IMAGE_ACCEPT)
                         val imageInput = BufferedInputStream(imageResponse.connection.inputStream)
-                        val imagePrefix = readPrefix(imageInput)
+                        val imagePrefix = ImagePrefixReader.readPrefix(imageInput, HEADER_BYTES)
                         val imageType = mediaType(imageResponse.connection.getHeaderField("Content-Type"))
                         if (imageType == "text/html" || imageType == "application/xhtml+xml" || looksLikeHtml(imagePrefix)) {
                             imageInput.close()
@@ -273,14 +273,6 @@ internal class ImageLinkDownloader(
             }
             return decodeHtml(output.toByteArray())
         }
-    }
-
-    private fun readPrefix(input: BufferedInputStream): ByteArray {
-        input.mark(HEADER_BYTES)
-        val header = ByteArray(HEADER_BYTES)
-        val count = input.read(header)
-        input.reset()
-        return if (count > 0) header.copyOf(count) else byteArrayOf()
     }
 
     private fun looksLikeHtml(prefix: ByteArray): Boolean {
