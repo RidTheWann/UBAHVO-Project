@@ -81,3 +81,12 @@ These sizes come from the CI run for beta.13 and are not guarantees for future b
 ## App Bundle build separation
 
 The beta.13 CI attempt confirmed that Android Gradle Plugin fails when ABI-split APK resource shrinking and AAB packaging are requested in the same task graph. CI now builds the split/universal APKs first, then performs a second Gradle invocation with `-Pubahvo.bundleOnly=true` so ABI splits are disabled for the AAB build. The AAB remains an unsigned candidate until secure production signing is configured.
+
+## High-resolution remote downloads and early progress feedback (beta.14 update)
+
+- Add 8K (4320p), 4K (2160p), and 1440p quality limits. The selector prefers MP4 video plus M4A audio when available, then falls back to video/audio streams in other source containers and asks yt-dlp/FFmpeg to remux to MP4. Availability depends on each source and its exposed formats; this does not invent higher resolutions when the source lacks them.
+- Permit four concurrent fragments for DASH/HLS downloads. This may improve transfer throughput for segmented high-bitrate sources, particularly high-resolution video, but it does not speed up the initial webpage/player/API extraction step and is not a universal speed guarantee.
+- Preserve the single yt-dlp extraction for title + download. Re-enable extractor log messages after the title marker so the UI can update its stage while extraction is underway; parse metadata, format selection, transfer destination, merge, and remux messages into user-facing progress text instead of leaving the same generic stage at 0%.
+- The above stage reporting improves feedback and diagnosis, not the remote server's actual extraction time. First visible percentage progress still depends on the source extractor and network; validate tap-to-first-progress on physical devices before making any numeric latency claim.
+- Language responsibilities remain deliberately separated: Kotlin owns Android UI, state, download orchestration, format selection, and progress/error mapping; C++ is the small JNI bridge; Rust performs bounded syntactic HTTPS media-URL preflight. Neither Rust nor C++ is being used to duplicate yt-dlp networking or FFmpeg encoding. Keep media transformations in the existing FFmpeg engine unless profiling identifies a proven bottleneck outside it.
+- Regression tests cover the resolution-capped format expression and stage-message parsing. CI and real-device conversion tests must pass before beta.14 is considered release-ready.
