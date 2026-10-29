@@ -15,6 +15,8 @@ Status: beta.14 adds initial local-file MP3/MP4 conversion alongside supported H
 - Use `com.ridthewann.ubahvo` as the Android application ID and Kotlin namespace/package. New outputs use `Download/UBAHVO`; history queries `Download/YoutubeConvert` and the old package-owner ID where Android permits access, without moving legacy files.
 - Keep product claims accurate: supported social/video URLs still use the current yt-dlp/FFmpeg adapter for MP4/MP3, while beta.16 adds a first-party Kotlin HTTP + public metadata image path. Not every website or photo carousel is supported.
 - The beta.11 Rust/C++ module is a narrow URL preflight. It is not presented as a replacement for yt-dlp or FFmpeg, and it must not be advertised as a measured media-conversion speedup.
+- Startup uses a first-party animated welcome and visible component-preparation loader before entering the media UI.
+- Verified media-support component checks run automatically on the existing schedule without a manual update card. App version checks use Android JobScheduler and native notifications; Android retains the final user-confirmed APK installation step.
 - Tooling direction: build UBAHVO-owned components when the scope is well-defined (URL safety, redirects, metadata parsing, image signatures, format planning, job state, progress, publication, tests). Keep codec engines and rapidly changing site extraction behind replaceable adapters until a first-party alternative can match real-world coverage, security, licensing, and device compatibility. Do not claim all third-party dependencies are removed prematurely.
 
 ## Distribution and release engineering
