@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.12
+
+- Expand URL preflight from YouTube-only URLs to supported HTTPS media links across multiple yt-dlp extractors while preserving single-video validation for YouTube.
+- Align Kotlin fallback and Rust/C++ native URL validation, including public DNS host checks, non-standard port rejection, credential rejection, local-host/IP rejection, and oversized-input limits.
+- Update the main workflow copy so users understand that support varies by site and playlists/batch downloads are not supported.
+- Add Kotlin and Rust regression coverage for common multi-site URL shapes and unsafe or malformed inputs.
+- This milestone expands media-link support; it does not yet claim universal local-file conversion or guaranteed support for every website.
+
 ## 0.1.0-beta.11
 
 - Add an optional Rust-based YouTube URL preflight, compiled for both supported ARM ABIs and linked through a minimal C++ JNI adapter.
