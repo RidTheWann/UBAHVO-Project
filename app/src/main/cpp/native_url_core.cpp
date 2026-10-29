@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-extern "C" std::int32_t ubahvo_normalize_youtube_url(
+extern "C" std::int32_t ubahvo_normalize_media_url(
     const char* input,
     char* output,
     std::size_t output_capacity
@@ -30,7 +30,7 @@ Java_com_ridthewann_ubahvo_core_NativeUrlCore_normalizeNative(
     }
 
     char output[4097] = {};
-    const std::int32_t result = ubahvo_normalize_youtube_url(
+    const std::int32_t result = ubahvo_normalize_media_url(
         input_chars,
         output,
         sizeof(output)
