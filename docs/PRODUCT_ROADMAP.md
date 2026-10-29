@@ -8,7 +8,7 @@ UBAHVO should be understandable without technical knowledge. The target audience
 
 ## Stage 1 — Branding
 
-Status: beta.13 adds ABI-specific direct-download APKs, an x86_64 build, and an unsigned optimized AAB candidate in CI. The app identity remains `com.ridthewann.ubahvo`; this packaging update does not change the application ID.
+Status: beta.14 adds initial local-file MP3/MP4 conversion alongside supported HTTPS media links. The application ID remains `com.ridthewann.ubahvo`; this feature does not change the app identity.
 
 - Use UBAHVO as the user-facing product name and launcher identity.
 - Keep developer attribution secondary: “by RidTheWann”.
@@ -50,17 +50,17 @@ Begin only after the simplified UI and its tests are stable.
 - Separate input discovery, format detection, conversion planning, execution, and output publishing from the current media-link download flow.
 - Model supported input and output formats explicitly. Reject unsupported or unsafe conversions before starting a job.
 - Evaluate libraries and native components by supported formats, license obligations, ABI and Android version support, memory use, performance, and security maintenance.
-- Add local-file selection and media types incrementally rather than advertising every format at once.
+- The beta.14 local path initially exposes MP3 audio and MP4 video only. It probes the input streams and required encoders before launching FFmpeg; it does not claim that every container or codec is supported.
 - Make progress, cancellation, partial-output cleanup, output naming, storage access, and error recovery consistent across engines.
 - Keep source-service downloading and local-file conversion distinct: they have different permissions, legal constraints, and failure modes.
 
 Acceptance gate:
-- Every advertised conversion has a verified implementation, dependency/license review, automated tests, and physical-device smoke tests for supported Android configurations.
+- Every advertised conversion has a verified implementation, dependency/license review, automated tests, and physical-device smoke tests for supported Android configurations. Beta.14 has automated planner tests; real-device codec, cancellation, and output playback/share validation remain necessary before stable production.
 - Existing installations and files remain compatible unless a separate migration is designed, tested, and documented.
 
 ## Release discipline
 
-- Run `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` on a configured Android development environment.
+- Run `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` on a configured Android development environment. Build the optimized AAB separately with `gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease` because Android Gradle Plugin cannot shrink ABI-split resources and package an AAB in the same task graph.
 - Verify the produced APK's label, icon, version, package ID, and required native libraries.
 - Smoke-test MP3, MP4, cancellation, updater success/failure, history, and file open/share actions on a real device.
 - Keep debug-signed beta artifacts clearly labelled as test builds. Do not describe a beta as a stable production release.

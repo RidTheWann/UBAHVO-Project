@@ -50,3 +50,18 @@ The beta.13 workflow also builds an optimized release AAB candidate to catch rel
 The x86_64 Rust/C++ target improves build/test coverage on compatible Android emulators, but does not resolve the third-party FFmpeg 0.18.1 16 KB memory-page alignment issue. Keep the conservative conversion gate until the bundled media payload is corrected and validated on affected devices.
 
 An ABI packaging change is not a media-engine redesign. Local file conversion remains a separate future phase with file-picker/URI access, explicit input/output format planning, cancellation, partial-output cleanup, and format-by-format license and device compatibility validation.
+
+## Local-file conversion path (beta.14)
+
+Beta.14 adds a separate local-file engine rather than feeding filesystem URIs into yt-dlp. Android's document picker provides the selected content URI; UBAHVO copies the input into app-private cache so the native FFmpeg process can read a regular file path. FFprobe inspects streams and duration before conversion. The planner chooses only encoders reported by the bundled FFmpeg executable and rejects unsupported input/output combinations before a conversion process begins.
+
+- MP3 requires an audio stream and an available MP3 encoder (`libmp3lame` or `libshine`).
+- MP4 requires a video stream and an available video encoder (`libx264` or `mpeg4`); when audio is present, an AAC encoder is also required.
+- Conversion uses argument arrays through `ProcessBuilder`, not a shell string. Inputs/outputs are kept under a job-specific private cache directory, progress uses FFmpeg's machine-readable progress output, cancellation terminates the active subprocess, and temporary files are deleted in `finally`.
+- Completed outputs are published through the existing MediaStore path and appear in recent history. The document picker is used instead of broad storage permissions.
+- Automated JVM tests cover probe parsing, attached album art, encoder detection/selection, invalid stream combinations, and progress math. They cannot establish that every upstream binary/codec runs on real devices; physical-device tests remain required.
+- The feature continues to use the current engine readiness/page-size gate. It does not bypass the documented 16 KB page-size limitation in the third-party FFmpeg payload.
+
+## App Bundle build separation
+
+The beta.13 CI attempt confirmed that Android Gradle Plugin fails when ABI-split APK resource shrinking and AAB packaging are requested in the same task graph. CI now builds the split/universal APKs first, then performs a second Gradle invocation with `-Pubahvo.bundleOnly=true` so ABI splits are disabled for the AAB build. The AAB remains an unsigned candidate until secure production signing is configured.
