@@ -1,14 +1,15 @@
 # UBAHVO for Android
 
-**UBAHVO** is a native Android media converter for supported HTTPS media links from multiple sites, currently producing MP4 video or MP3 audio. Direct downloads include a universal APK and smaller ABI-specific APKs for ARM phones and x86_64 emulators; local-file conversion remains a separate future stage.
+**UBAHVO** is a native Android media converter for supported HTTPS media links from multiple sites and user-selected local audio/video files. The current output formats are MP4 video and MP3 audio. Direct downloads include a universal APK and smaller ABI-specific APKs for ARM phones and x86_64 emulators.
 
-**Current status: beta (`0.1.0-beta.13`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.14`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
 - Native Android app built with Kotlin, Jetpack Compose, Material 3, ViewModel, and StateFlow.
 - Converts supported HTTPS media links from multiple sites to MP4 video or MP3 audio through the Android yt-dlp wrapper and FFmpeg. Supported sites are extractor-dependent and can change as websites change; playlists and batch downloads are not supported.
-- MP4 quality selection, progress reporting, cancellation, and Android share-sheet URL intake.
+- MP4 quality selection for remote links, progress reporting, cancellation, and Android share-sheet URL intake.
+- Local audio/video conversion to MP3 or MP4 from files selected through Android's document picker. FFprobe inspects the streams before FFmpeg runs; selected input is copied into app-private cache, and temporary files are removed when the job finishes or is cancelled.
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
 - HTTPS media URL preflight and unit tests.
@@ -21,7 +22,7 @@
 
 Open the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and choose a build that matches your device:
 
-- **Universal APK — easiest:** `UBAHVO-0.1.0-beta.13-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
+- **Universal APK — easiest:** `UBAHVO-0.1.0-beta.14-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
 - **Most current Android phones:** `UBAHVO-0.1.0-beta.13-arm64-v8a-debug.apk` is for 64-bit ARM phones.
 - **Older 32-bit ARM devices:** `UBAHVO-0.1.0-beta.13-armeabi-v7a-debug.apk` is for supported 32-bit ARM phones.
 - **Emulators / compatible Intel Android devices:** `UBAHVO-0.1.0-beta.13-x86_64-debug.apk` is for x86_64 Android environments.
@@ -63,9 +64,9 @@ Debug APKs are produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-be
 
 ## Product roadmap
 
-Development is staged: branding and build artifact naming first, beginner-friendly UI next, then universal local-file conversion after each new format has verified dependencies, licensing, safety, and device compatibility.
+Development is staged: branding and distribution first, supported multi-site links next, and now an initial local-file path for MP3/MP4. Additional formats, playlists, batch jobs, and broad codec support remain future work subject to dependency, licensing, safety, and device-compatibility checks.
 
-See [Product roadmap](docs/PRODUCT_ROADMAP.md). Items beyond the currently working supported-media-link-to-MP4/MP3 workflow are plans, not present features. For the measured save-path bottleneck, language/runtime decision, and download-size trade-offs, see [Performance audit](docs/PERFORMANCE_AUDIT.md).
+See [Product roadmap](docs/PRODUCT_ROADMAP.md). Local conversion currently covers audio-to-MP3 and video-to-MP4 only when the source streams and bundled encoders are compatible. For the measured save-path bottleneck, language/runtime decision, and download-size trade-offs, see [Performance audit](docs/PERFORMANCE_AUDIT.md).
 
 ## Use responsibly
 
