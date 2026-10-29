@@ -13,7 +13,7 @@ Status: beta.11 native-core follow-up updates application ID, Kotlin namespace/p
 - Use UBAHVO as the user-facing product name and launcher identity.
 - Keep developer attribution secondary: “by RidTheWann”.
 - Use `com.ridthewann.ubahvo` as the Android application ID and Kotlin namespace/package. New outputs use `Download/UBAHVO`; history queries `Download/YoutubeConvert` and the old package-owner ID where Android permits access, without moving legacy files.
-- Keep product claims accurate: the current beta processes supported YouTube URLs into MP4 video or MP3 audio only.
+- Keep product claims accurate: the current beta processes supported HTTPS media URLs from multiple yt-dlp extractors into MP4 video or MP3 audio. Site coverage is not guaranteed and playlists/batch jobs are not supported.
 - The beta.11 Rust/C++ module is a narrow URL preflight. It is not presented as a replacement for yt-dlp or FFmpeg, and it must not be advertised as a measured media-conversion speedup.
 
 ## Stage 2 — Beginner-friendly and accessible UI
@@ -35,9 +35,11 @@ Acceptance gate:
 
 ## Stage 3 — Universal conversion foundation
 
+Current step: broaden link-based media extraction first. Local-file conversion is a separate engine and permission path; its advertised formats must be implemented and tested before the UI claims broad format support.
+
 Begin only after the simplified UI and its tests are stable.
 
-- Separate input discovery, format detection, conversion planning, execution, and output publishing from the current YouTube-specific download flow.
+- Separate input discovery, format detection, conversion planning, execution, and output publishing from the current media-link download flow.
 - Model supported input and output formats explicitly. Reject unsupported or unsafe conversions before starting a job.
 - Evaluate libraries and native components by supported formats, license obligations, ABI and Android version support, memory use, performance, and security maintenance.
 - Add local-file selection and media types incrementally rather than advertising every format at once.
