@@ -12,7 +12,7 @@ import com.ridthewann.ubahvo.data.DownloadRepository
 import com.ridthewann.ubahvo.data.DownloadOutputParser
 import com.ridthewann.ubahvo.data.YtDlpAutoUpdatePolicy
 import com.ridthewann.ubahvo.data.RecentOutput
-import com.ridthewann.ubahvo.data.YouTubeUrlValidator
+import com.ridthewann.ubahvo.data.MediaUrlValidator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -158,7 +158,7 @@ class ConverterViewModel(
         if (!YtDlpAutoUpdatePolicy.isDue(now, nextCheckAt)) {
             if (_uiState.value.ytdlpUpdateMessage == null) {
                 _uiState.update {
-                    it.copy(ytdlpUpdateMessage = "Dukungan video diperiksa otomatis. Tidak perlu memperbaruinya setiap kali.")
+                    it.copy(ytdlpUpdateMessage = "Dukungan tautan diperiksa otomatis. Tidak perlu memperbaruinya setiap kali.")
                 }
             }
             return
@@ -168,7 +168,7 @@ class ConverterViewModel(
             _uiState.update {
                 it.copy(
                     isAutoUpdatingYtDlp = true,
-                    ytdlpUpdateMessage = "Memeriksa dukungan video otomatis di latar belakang…"
+                    ytdlpUpdateMessage = "Memeriksa dukungan situs media otomatis di latar belakang…"
                 )
             }
             var succeeded = false
@@ -183,9 +183,9 @@ class ConverterViewModel(
                     it.copy(
                         ytdlpVersion = version,
                         ytdlpUpdateMessage = if (result.updated) {
-                            "Dukungan video otomatis diperbarui ke $version."
+                            "Dukungan tautan otomatis diperbarui ke $version."
                         } else {
-                            "Dukungan video sudah terbaru ($version)."
+                            "Dukungan tautan sudah terbaru ($version)."
                         }
                     )
                 }
@@ -195,7 +195,7 @@ class ConverterViewModel(
                 android.util.Log.w("UBAHVO", "Automatic yt-dlp support update failed", error)
                 _uiState.update {
                     it.copy(
-                        ytdlpUpdateMessage = "Pemeriksaan otomatis belum berhasil. Dukungan saat ini tetap bisa dicoba; ketuk Perbarui dukungan video jika tautan gagal."
+                        ytdlpUpdateMessage = "Pemeriksaan otomatis belum berhasil. Dukungan saat ini tetap bisa dicoba; ketuk Perbarui dukungan tautan jika tautan gagal."
                     )
                 }
             } finally {
@@ -229,7 +229,7 @@ class ConverterViewModel(
             _uiState.update {
                 it.copy(
                     isUpdatingYtDlp = true,
-                    ytdlpUpdateMessage = "Memeriksa dukungan video…",
+                    ytdlpUpdateMessage = "Memeriksa dukungan tautan…",
                     errorMessage = null
                 )
             }
@@ -246,9 +246,9 @@ class ConverterViewModel(
                     it.copy(
                         ytdlpVersion = version,
                         ytdlpUpdateMessage = if (result.updated) {
-                            "Dukungan video berhasil diperbarui ke $version."
+                            "Dukungan tautan berhasil diperbarui ke $version."
                         } else {
-                            "Dukungan video sudah terbaru ($version)."
+                            "Dukungan tautan sudah terbaru ($version)."
                         }
                     )
                 }
@@ -288,10 +288,10 @@ class ConverterViewModel(
             return
         }
 
-        val normalizedUrl = YouTubeUrlValidator.normalize(snapshot.url)
+        val normalizedUrl = MediaUrlValidator.normalize(snapshot.url)
         if (normalizedUrl == null) {
             _uiState.update {
-                it.copy(errorMessage = "Masukkan tautan YouTube yang benar, dimulai dengan https://.")
+                it.copy(errorMessage = "Masukkan tautan HTTPS yang valid dari situs media yang didukung.")
             }
             return
         }
@@ -427,7 +427,7 @@ class ConverterViewModel(
                 detail.contains("sign in", ignoreCase = true) ->
                 "Video ini tampaknya privat atau membutuhkan akses akun. Aplikasi tidak melewati pembatasan tersebut."
             detail.contains("Unsupported URL", ignoreCase = true) ->
-                "Tautan tidak didukung. Gunakan tautan ke satu video YouTube."
+                "Situs atau tautan ini belum didukung, atau sumber tidak menyediakan media yang dapat disimpan. Coba tautan langsung ke satu item media."
             detail.contains("No .mp4 output", ignoreCase = true) ||
                 detail.contains("No .mp3 output", ignoreCase = true) ->
                 "File hasil belum berhasil dibuat. Coba lagi; jika terulang, perbarui dukungan tautan."
