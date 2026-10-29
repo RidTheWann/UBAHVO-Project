@@ -62,6 +62,22 @@ Beta.14 adds a separate local-file engine rather than feeding filesystem URIs in
 - Automated JVM tests cover probe parsing, attached album art, encoder detection/selection, invalid stream combinations, and progress math. They cannot establish that every upstream binary/codec runs on real devices; physical-device tests remain required.
 - The feature continues to use the current engine readiness/page-size gate. It does not bypass the documented 16 KB page-size limitation in the third-party FFmpeg payload.
 
+## Measured beta.13 artifact sizes
+
+The successful CI run for commit `a26d10f05eefef2b715ac8291772fdbb6ca2d41e` measured these final downloadable artifacts:
+
+| Artifact | Bytes | Approx. decimal MB |
+| --- | ---: | ---: |
+| Universal APK (ARM + x86_64) | 160,842,926 | 160.84 MB |
+| `arm64-v8a` APK | 62,937,041 | 62.94 MB |
+| `armeabi-v7a` APK | 56,174,703 | 56.17 MB |
+| `x86_64` APK | 65,959,270 | 65.96 MB |
+| Optimized unsigned AAB candidate | 157,591,726 | 157.59 MB |
+
+The universal APK is 60,842,926 bytes above the 100,000,000-byte target, so the target is **not met** by the one-file download. The three ABI-specific APKs remain below that threshold individually and avoid bundling the unused architecture's native payload. The AAB is a build artifact, not the same thing as a device-specific download: Google Play normally generates optimized install APKs from a properly signed App Bundle. The measured AAB remains unsigned and must not be represented as ready to publish.
+
+These sizes come from the CI run for beta.13 and are not guarantees for future builds; record the new workflow summary each time a release changes native dependencies, scripts, resources, or build settings.
+
 ## App Bundle build separation
 
 The beta.13 CI attempt confirmed that Android Gradle Plugin fails when ABI-split APK resource shrinking and AAB packaging are requested in the same task graph. CI now builds the split/universal APKs first, then performs a second Gradle invocation with `-Pubahvo.bundleOnly=true` so ABI splits are disabled for the AAB build. The AAB remains an unsigned candidate until secure production signing is configured.
