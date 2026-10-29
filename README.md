@@ -55,7 +55,8 @@ Open the repository root in Android Studio and install Android SDK Platform 36, 
 rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
 cargo fmt --manifest-path app/src/main/rust/Cargo.toml -- --check
 cargo test --manifest-path app/src/main/rust/Cargo.toml --locked
-gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
+gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease
 ```
 
 Debug APKs are produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.13-universal-debug.apk` and ABI-specific `UBAHVO-0.1.0-beta.13-{arm64-v8a,armeabi-v7a,x86_64}-debug.apk` files. CI also produces an unsigned AAB candidate under `app/build/outputs/bundle/release/app-release.aab`.
