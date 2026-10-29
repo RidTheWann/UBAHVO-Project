@@ -45,6 +45,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,6 +63,7 @@ import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
 import com.ridthewann.ubahvo.data.RecentOutput
 import com.ridthewann.ubahvo.data.RecentOutputFormatting
+import com.ridthewann.ubahvo.updates.AppUpdateInfo
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -69,7 +71,11 @@ fun ConverterScreen(
     viewModel: ConverterViewModel,
     onOpenOutput: (Uri, String) -> Unit,
     onShareOutput: (Uri, String) -> Unit,
-    onPickLocalFile: () -> Unit
+    onPickLocalFile: () -> Unit,
+    appUpdateInfo: AppUpdateInfo? = null,
+    onOpenAppUpdate: (AppUpdateInfo) -> Unit = {},
+    onEnableUpdateNotifications: () -> Unit = {},
+    onDismissAppUpdate: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -86,83 +92,62 @@ fun ConverterScreen(
         ) {
             Header()
 
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            appUpdateInfo?.let { update ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.58f))
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Text(
-                                "Dukungan tautan otomatis",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                state.ytdlpVersion?.let { "Pembaruan otomatis aktif · versi $it" }
-                                    ?: "UBAHVO memeriksa pembaruan di latar belakang. Tidak perlu mengatur apa pun.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        OutlinedButton(
-                            onClick = viewModel::updateYtDlp,
-                            enabled = state.engineReady && !state.isBusy &&
-                                !state.isUpdatingYtDlp && !state.isAutoUpdatingYtDlp,
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            if (state.isUpdatingYtDlp || state.isAutoUpdatingYtDlp) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                androidx.compose.material3.Icon(
-                                    Icons.Default.Refresh,
-                                    contentDescription = null
-                                )
-                            }
-                            Spacer(Modifier.width(7.dp))
-                            Text(
-                                when {
-                                    state.isAutoUpdatingYtDlp -> "Otomatis…"
-                                    state.isUpdatingYtDlp -> "Memeriksa…"
-                                    else -> "Cek sekarang"
-                                }
-                            )
-                        }
-                    }
-
-                    val updateMessage = state.ytdlpUpdateMessage
-                    if (updateMessage != null) {
                         Text(
-                            updateMessage,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (
-                                updateMessage.contains("gagal", ignoreCase = true) ||
-                                updateMessage.contains("belum berhasil", ignoreCase = true)
-                            ) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
+                            "Pembaruan UBAHVO tersedia",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                    if (!state.engineReady && !(state.inputSource == InputSource.LINK && state.mode == OutputMode.IMAGE)) {
                         Text(
-                            "Fitur simpan belum tersedia di perangkat ini.",
+                            "Versi " + update.versionName + " sudah tersedia. Buka halaman rilis untuk mengunduh APK; Android akan meminta konfirmasi sebelum memasang.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(onClick = { onOpenAppUpdate(update) }) {
+                                Text("Lihat pembaruan")
+                            }
+                            OutlinedButton(onClick = onEnableUpdateNotifications) {
+                                Text("Pengaturan notifikasi")
+                            }
+                            TextButton(onClick = onDismissAppUpdate) {
+                                Text("Nanti")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!state.engineReady && !(state.inputSource == InputSource.LINK && state.mode == OutputMode.IMAGE)) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(
+                            "Komponen media belum tersedia",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            state.errorMessage ?: "Fitur konversi belum didukung pada konfigurasi perangkat ini.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
