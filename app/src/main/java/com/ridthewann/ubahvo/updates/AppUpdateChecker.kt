@@ -229,7 +229,5 @@ internal object AppUpdateChecker {
         }
     }
 
-    companion object {
-        private val VERSION_PATTERN = Regex("""v?(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?""")
-    }
+    private val VERSION_PATTERN = Regex("""v?(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?""")
 }
