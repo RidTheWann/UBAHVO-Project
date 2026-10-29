@@ -48,10 +48,10 @@ internal object AppUpdateNotifications {
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_app)
             .setContentTitle("Pembaruan UBAHVO tersedia")
-            .setContentText("Versi \${update.versionName} siap diunduh. Ketuk untuk melihat pembaruan.")
+            .setContentText("Versi " + update.versionName + " siap diunduh. Ketuk untuk melihat pembaruan.")
             .setStyle(
                 Notification.BigTextStyle().bigText(
-                    "UBAHVO versi \${update.versionName} sudah tersedia. Buka halaman rilis untuk mengunduh APK dan ikuti konfirmasi pemasangan Android."
+                    "UBAHVO versi " + update.versionName + " sudah tersedia. Buka halaman rilis untuk mengunduh APK dan ikuti konfirmasi pemasangan Android."
                 )
             )
             .setContentIntent(pendingIntent)
