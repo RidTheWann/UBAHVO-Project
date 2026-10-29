@@ -47,7 +47,7 @@ class DownloadOutputParserTest {
     @Test
     fun reportsDownloadAndPostProcessingStages() {
         assertEquals(
-            "Menyiapkan format video yang tersedia…",
+            "Format ditemukan — menyiapkan unduhan…",
             DownloadOutputParser.stageMessageFromLine("[info] abc: Downloading 2 format(s): 313+140", OutputMode.MP4)
         )
         assertEquals(
