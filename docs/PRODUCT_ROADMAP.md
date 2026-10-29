@@ -39,7 +39,7 @@ Current step: broaden link-based media extraction first. Local-file conversion i
 
 Begin only after the simplified UI and its tests are stable.
 
-- Separate input discovery, format detection, conversion planning, execution, and output publishing from the current YouTube-specific download flow.
+- Separate input discovery, format detection, conversion planning, execution, and output publishing from the current media-link download flow.
 - Model supported input and output formats explicitly. Reject unsupported or unsafe conversions before starting a job.
 - Evaluate libraries and native components by supported formats, license obligations, ABI and Android version support, memory use, performance, and security maintenance.
 - Add local-file selection and media types incrementally rather than advertising every format at once.
