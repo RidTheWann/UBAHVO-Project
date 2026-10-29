@@ -97,8 +97,11 @@ jobs:
           gradle-version: "8.13"
           cache-provider: basic
 
-      - name: Test, build ABI APKs, and package an optimized AAB candidate
-        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
+      - name: Run Android tests and build ABI APKs
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Build optimized AAB candidate without ABI splits
+        run: gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease
 
       - name: Verify universal and ABI-specific UBAHVO APKs
         shell: bash
