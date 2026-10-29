@@ -28,6 +28,28 @@ class LocalMediaConversionPlannerTest {
     }
 
     @Test
+    fun selectsRealVideoStreamInsteadOfAttachedCoverArt() {
+        val info = LocalMediaConversionPlanner.parseProbeJson(
+            """{"format":{"duration":"12"},"streams":[{"index":0,"codec_type":"video","disposition":{"attached_pic":1}},{"index":1,"codec_type":"audio","disposition":{"attached_pic":0}},{"index":2,"codec_type":"video","disposition":{"attached_pic":0}}]}"""
+        )
+        assertTrue(info.hasVideo)
+        assertTrue(info.hasAudio)
+        assertEquals(2, info.videoStreamIndex)
+        assertEquals(1, info.audioStreamIndex)
+
+        val args = LocalMediaConversionPlanner.buildArguments(
+            OutputMode.MP4,
+            info,
+            setOf("libx264", "aac"),
+            "/private/source.mkv",
+            "/private/output.mp4"
+        )
+        assertTrue(args.contains("0:2"))
+        assertTrue(args.contains("0:1"))
+        assertFalse(args.contains("0:v:0"))
+    }
+
+    @Test
     fun rejectsProbeOutputWithoutMediaStreams() {
         try {
             LocalMediaConversionPlanner.parseProbeJson("""{"format":{"duration":"4"},"streams":[]}""")
