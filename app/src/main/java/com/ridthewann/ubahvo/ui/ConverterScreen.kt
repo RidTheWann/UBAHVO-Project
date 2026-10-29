@@ -108,7 +108,7 @@ fun ConverterScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "Versi " + update.versionName + " sudah tersedia. Buka halaman rilis untuk mengunduh APK; Android akan meminta konfirmasi sebelum memasang.",
+                            "Versi " + update.versionName + " tersedia. Unduh APK dari halaman rilis; Android meminta konfirmasi pemasangan. APK beta dengan tanda tangan berbeda mungkin perlu instal ulang, jadi cadangkan file penting terlebih dahulu.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
