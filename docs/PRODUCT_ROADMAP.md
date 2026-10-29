@@ -8,13 +8,21 @@ UBAHVO should be understandable without technical knowledge. The target audience
 
 ## Stage 1 — Branding
 
-Status: beta.11 native-core follow-up updates application ID, Kotlin namespace/packages, APK and release names, and output folders. This package change creates a separate Android installation; it does not replace older app-ID installs.
+Status: beta.13 adds ABI-specific direct-download APKs, an x86_64 build, and an unsigned optimized AAB candidate in CI. The app identity remains `com.ridthewann.ubahvo`; this packaging update does not change the application ID.
 
 - Use UBAHVO as the user-facing product name and launcher identity.
 - Keep developer attribution secondary: “by RidTheWann”.
 - Use `com.ridthewann.ubahvo` as the Android application ID and Kotlin namespace/package. New outputs use `Download/UBAHVO`; history queries `Download/YoutubeConvert` and the old package-owner ID where Android permits access, without moving legacy files.
 - Keep product claims accurate: the current beta processes supported HTTPS media URLs from multiple yt-dlp extractors into MP4 video or MP3 audio. Site coverage is not guaranteed and playlists/batch jobs are not supported.
 - The beta.11 Rust/C++ module is a narrow URL preflight. It is not presented as a replacement for yt-dlp or FFmpeg, and it must not be advertised as a measured media-conversion speedup.
+
+## Distribution and release engineering
+
+- Keep the universal APK as the simplest manual-install option, but publish ABI-specific APKs to reduce download size for users who can identify their architecture.
+- Include `arm64-v8a` and `armeabi-v7a` for ARM phones and `x86_64` for compatible emulator/Intel Android environments. Confirm the upstream media runtime works for each target; packaging success alone is not device compatibility proof.
+- Build an optimized Android App Bundle candidate in CI. Do not describe an unsigned AAB as production-ready or publish it to Google Play until a permanent owner-controlled upload key and protected signing workflow are configured.
+- Publish SHA-256 checksums for each downloadable APK and report actual artifact sizes. Keep the 100,000,000-byte universal target as a measured goal, not a pass/fail claim made before building.
+- Continue to label CI debug-signed APKs as beta builds. A stable release requires production signing, reproducible release verification, and physical-device smoke testing.
 
 ## Stage 2 — Beginner-friendly and accessible UI
 
