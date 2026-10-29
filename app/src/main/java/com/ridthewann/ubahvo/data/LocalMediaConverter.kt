@@ -40,6 +40,8 @@ internal class LocalMediaConverter(
         if (!workDirectory.mkdirs() && !workDirectory.isDirectory) {
             throw LocalMediaConversionException("Ruang kerja sementara tidak dapat disiapkan.")
         }
+        val coroutineContext = currentCoroutineContext()
+        var publishedOutput: PublishedOutput? = null
 
         try {
             val inputSize = querySize(uri)
@@ -52,7 +54,11 @@ internal class LocalMediaConverter(
 
             onProgress(0f, 0L, "LOCAL_MODE:${if (inputSize == null) "indeterminate" else "determinate"}")
             onProgress(0f, 0L, "LOCAL_STAGE:Menyalin file ke area kerja…")
-            val inputFile = File(workDirectory, safeInputName(displayName))
+            val inputDirectory = File(workDirectory, INPUT_DIRECTORY)
+            if (!inputDirectory.mkdirs() && !inputDirectory.isDirectory) {
+                throw LocalMediaConversionException("Folder input sementara tidak dapat disiapkan.")
+            }
+            val inputFile = File(inputDirectory, safeInputName(displayName))
             copyInput(uri, inputFile, inputSize, onProgress)
 
             if (workDirectory.usableSpace < MINIMUM_FREE_SPACE_RESERVE) {
@@ -76,7 +82,7 @@ internal class LocalMediaConverter(
                 processId,
                 listOf(
                     ffprobe.absolutePath, "-v", "error",
-                    "-show_entries", "format=duration:stream=codec_type,codec_name,width,height:stream_disposition=attached_pic",
+                    "-show_entries", "format=duration:stream=index,codec_type,codec_name,width,height:stream_disposition=attached_pic",
                     "-of", "json", inputFile.absolutePath
                 ),
                 "File tidak dapat dibaca sebagai media audio atau video."
@@ -146,8 +152,25 @@ internal class LocalMediaConverter(
             if (!outputFile.isFile || outputFile.length() <= 0L) {
                 throw LocalMediaConversionException("File hasil kosong. Coba media lain atau periksa ruang penyimpanan.")
             }
+            // The source is no longer needed after conversion. Remove it before copying the
+            // result into MediaStore to avoid keeping input + output + published copies at once.
+            if (!inputFile.delete() && inputFile.exists()) {
+                throw LocalMediaConversionException(
+                    "File sementara tidak dapat dibersihkan. Pastikan penyimpanan cukup lalu coba lagi."
+                )
+            }
+
             onProgress(98f, 0L, "LOCAL_STAGE:Menyimpan hasil ke Download/UBAHVO…")
-            publisher.publish(outputFile, mode.mimeType)
+            val published = publisher.publish(outputFile, mode.mimeType) {
+                coroutineContext.ensureActive()
+            }
+            publishedOutput = published
+            // Catch cancellation after the synchronous MediaStore copy has returned as well.
+            coroutineContext.ensureActive()
+            published
+        } catch (cancelled: CancellationException) {
+            publishedOutput?.let { publisher.discard(it.uri) }
+            throw cancelled
         } finally {
             workDirectory.deleteRecursively()
         }
@@ -301,6 +324,7 @@ internal class LocalMediaConverter(
 
     companion object {
         private const val WORK_DIRECTORY = "ubahvo-local-conversion"
+        private const val INPUT_DIRECTORY = "input"
         private const val FFMPEG_EXECUTABLE = "libffmpeg.so"
         private const val FFPROBE_EXECUTABLE = "libffprobe.so"
         private const val COPY_BUFFER_SIZE = 64 * 1024
