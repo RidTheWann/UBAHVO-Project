@@ -6,7 +6,8 @@ enum class OutputMode(
     val mimeType: String
 ) {
     MP4("Video MP4", "mp4", "video/mp4"),
-    MP3("Audio MP3", "mp3", "audio/mpeg")
+    MP3("Audio MP3", "mp3", "audio/mpeg"),
+    IMAGE("Gambar / wallpaper", "jpg", "image/jpeg")
 }
 
 enum class VideoQuality(val label: String, val maxHeight: Int) {

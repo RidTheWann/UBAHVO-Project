@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
@@ -157,7 +158,7 @@ fun ConverterScreen(
                             }
                         )
                     }
-                    if (!state.engineReady) {
+                    if (!state.engineReady && !(state.inputSource == InputSource.LINK && state.mode == OutputMode.IMAGE)) {
                         Text(
                             "Fitur simpan belum tersedia di perangkat ini.",
                             style = MaterialTheme.typography.bodySmall,
@@ -228,6 +229,23 @@ fun ConverterScreen(
                         onClick = { viewModel.setMode(OutputMode.MP3) }
                     )
                 }
+                if (state.inputSource == InputSource.LINK) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FormatCard(
+                            modifier = Modifier.weight(1f),
+                            title = "Gambar / wallpaper",
+                            subtitle = "Foto dari tautan publik",
+                            selected = state.mode == OutputMode.IMAGE,
+                            enabled = !state.isBusy && !state.isUpdatingYtDlp,
+                            imageVector = Icons.Default.Image,
+                            onClick = { viewModel.setMode(OutputMode.IMAGE) }
+                        )
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
             }
 
             Card(
@@ -266,7 +284,11 @@ fun ConverterScreen(
                         )
 
                         Text(
-                            "Pilih Bagikan lalu UBAHVO, atau tempel tautan. Banyak situs media didukung, tetapi tidak semua tautan dijamin bekerja; playlist belum didukung.",
+                            if (state.mode == OutputMode.IMAGE) {
+                                "Tempel tautan gambar langsung atau halaman publik yang menyediakan metadata gambar utama. Untuk posting carousel, hasil awal mungkin hanya gambar sampul; tidak semua situs menampilkan foto asli melalui metadata publik."
+                            } else {
+                                "Pilih Bagikan lalu UBAHVO, atau tempel tautan. Banyak situs media didukung, tetapi tidak semua tautan dijamin bekerja; playlist belum didukung."
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -443,7 +465,8 @@ fun ConverterScreen(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
                     onClick = viewModel::start,
-                    enabled = state.engineReady && !state.isBusy && !state.isUpdatingYtDlp &&
+                    enabled = (state.engineReady || (state.inputSource == InputSource.LINK && state.mode == OutputMode.IMAGE)) &&
+                        !state.isBusy && !state.isUpdatingYtDlp &&
                         (if (state.inputSource == InputSource.LINK) state.url.isNotBlank()
                         else state.localFileUri != null),
                     modifier = Modifier
@@ -463,6 +486,7 @@ fun ConverterScreen(
                         Spacer(Modifier.width(10.dp))
                         Text(when {
                             state.inputSource == InputSource.LOCAL_FILE -> "Sedang mengonversi file…"
+                            state.mode == OutputMode.IMAGE -> "Sedang menyimpan gambar…"
                             state.mode == OutputMode.MP4 -> "Sedang menyimpan video…"
                             else -> "Sedang menyimpan audio…"
                         })
@@ -472,6 +496,7 @@ fun ConverterScreen(
                         Text(when {
                             state.inputSource == InputSource.LOCAL_FILE && state.mode == OutputMode.MP4 -> "Jadikan MP4"
                             state.inputSource == InputSource.LOCAL_FILE -> "Jadikan MP3"
+                            state.mode == OutputMode.IMAGE -> "Simpan gambar"
                             state.mode == OutputMode.MP4 -> "Simpan video"
                             else -> "Simpan audio"
                         }, fontWeight = FontWeight.Bold)
@@ -560,7 +585,7 @@ fun ConverterScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Konversi berhasil",
+                                if (state.mode == OutputMode.IMAGE) "Gambar berhasil disimpan" else "Konversi berhasil",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )

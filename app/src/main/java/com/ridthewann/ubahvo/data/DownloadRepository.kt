@@ -22,6 +22,7 @@ class DownloadRepository(context: Context) {
     private val appContext = context.applicationContext
     private val publisher = OutputPublisher(appContext)
     private val localMediaConverter = LocalMediaConverter(appContext, publisher)
+    private val imageLinkDownloader = ImageLinkDownloader(appContext, publisher)
 
     suspend fun updateYtDlp(): YtDlpUpdateResult = withContext(Dispatchers.IO) {
         StableYtDlpUpdater(appContext).update()
@@ -46,6 +47,9 @@ class DownloadRepository(context: Context) {
         processId: String,
         onProgress: (progress: Float, etaSeconds: Long, outputLine: String) -> Unit
     ): PublishedOutput = withContext(Dispatchers.IO) {
+        if (mode == OutputMode.IMAGE) {
+            return@withContext imageLinkDownloader.download(url, processId, onProgress)
+        }
         val baseDirectory = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
             ?: appContext.cacheDir
         val outputDirectory = File(baseDirectory, "UBAHVO/$processId")
@@ -83,6 +87,7 @@ class DownloadRepository(context: Context) {
             YoutubeDL.getInstance().destroyProcessById(processId)
         }
         localMediaConverter.cancel(processId)
+        imageLinkDownloader.cancel(processId)
     }
 
     private fun buildRequest(
@@ -126,6 +131,9 @@ class DownloadRepository(context: Context) {
                     addOption("--merge-output-format", "mp4")
                     addOption("--remux-video", "mp4")
                 }
+                OutputMode.IMAGE -> throw IOException(
+                    "Image links must use UBAHVO's first-party image pipeline."
+                )
             }
         }
     }

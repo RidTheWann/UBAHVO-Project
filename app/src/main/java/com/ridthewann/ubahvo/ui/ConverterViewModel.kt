@@ -15,6 +15,7 @@ import com.ridthewann.ubahvo.data.YtDlpAutoUpdatePolicy
 import com.ridthewann.ubahvo.data.RecentOutput
 import com.ridthewann.ubahvo.data.MediaUrlValidator
 import com.ridthewann.ubahvo.data.LocalMediaConversionException
+import com.ridthewann.ubahvo.data.ImageLinkException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -136,6 +137,12 @@ class ConverterViewModel(
         _uiState.update { current ->
             current.copy(
                 inputSource = source,
+                mode = if (source == InputSource.LOCAL_FILE && current.mode == OutputMode.IMAGE) {
+                    OutputMode.MP4
+                } else current.mode,
+                outputMimeType = if (source == InputSource.LOCAL_FILE && current.mode == OutputMode.IMAGE) {
+                    OutputMode.MP4.mimeType
+                } else current.outputMimeType,
                 errorMessage = null,
                 outputUri = null,
                 outputName = null,
@@ -179,6 +186,7 @@ class ConverterViewModel(
     }
 
     fun setMode(mode: OutputMode) {
+        if (mode == OutputMode.IMAGE && _uiState.value.inputSource != InputSource.LINK) return
         _uiState.update {
             it.copy(
                 mode = mode,
@@ -333,7 +341,7 @@ class ConverterViewModel(
         val snapshot = _uiState.value
         if (snapshot.isBusy || snapshot.isUpdatingYtDlp) return
 
-        if (!application.engineReady) {
+        if (snapshot.mode != OutputMode.IMAGE && !application.engineReady) {
             _uiState.update {
                 it.copy(
                     errorMessage = application.engineError
@@ -373,9 +381,11 @@ class ConverterViewModel(
                     progress = 0f,
                     etaSeconds = 0L,
                     isProgressIndeterminate = snapshot.inputSource == InputSource.LOCAL_FILE,
-                    stageMessage = if (snapshot.inputSource == InputSource.LOCAL_FILE) {
-                        "Menyiapkan file media…"
-                    } else "Menghubungkan ke sumber media…",
+                    stageMessage = when {
+                        snapshot.inputSource == InputSource.LOCAL_FILE -> "Menyiapkan file media…"
+                        snapshot.mode == OutputMode.IMAGE -> "Memeriksa tautan gambar…"
+                        else -> "Menghubungkan ke sumber media…"
+                    },
                     videoTitle = null,
                     errorMessage = null,
                     outputUri = null,
@@ -390,18 +400,24 @@ class ConverterViewModel(
                 val onProgress: (Float, Long, String) -> Unit = { progress, eta, line ->
                     val parsedTitle = if (snapshot.inputSource == InputSource.LINK) {
                         DownloadOutputParser.videoTitleFromLine(line)
+                            ?: line.takeIf {
+                                snapshot.mode == OutputMode.IMAGE && it.startsWith("IMAGE_TITLE:")
+                            }?.removePrefix("IMAGE_TITLE:")?.takeIf { it.isNotBlank() }
                     } else null
-                    val downloadStage = if (snapshot.inputSource == InputSource.LINK) {
+                    val downloadStage = if (snapshot.inputSource == InputSource.LINK && snapshot.mode != OutputMode.IMAGE) {
                         DownloadOutputParser.stageMessageFromLine(line, snapshot.mode)
                     } else null
+                    val imageStage = line.takeIf {
+                        snapshot.mode == OutputMode.IMAGE && it.startsWith("IMAGE_STAGE:")
+                    }?.removePrefix("IMAGE_STAGE:")
                     val localStage = line.takeIf { it.startsWith("LOCAL_STAGE:") }?.removePrefix("LOCAL_STAGE:")
-                    val localIndeterminate = line == "LOCAL_MODE:indeterminate"
-                    val localDeterminate = line == "LOCAL_MODE:determinate"
+                    val localIndeterminate = line == "LOCAL_MODE:indeterminate" || line == "IMAGE_MODE:indeterminate"
+                    val localDeterminate = line == "LOCAL_MODE:determinate" || line == "IMAGE_MODE:determinate"
                     val progressChanged = lastUiProgress < 0f ||
                         kotlin.math.abs(progress - lastUiProgress) >= 0.5f || progress >= 100f
                     val etaChanged = eta > 0L && eta != lastUiEta
-                    val importantLine = parsedTitle != null || downloadStage != null || localStage != null ||
-                        line.startsWith("LOCAL_MODE:") ||
+                    val importantLine = parsedTitle != null || downloadStage != null || imageStage != null || localStage != null ||
+                        line.startsWith("LOCAL_MODE:") || line.startsWith("IMAGE_MODE:") ||
                         line.startsWith("[download] Destination:") ||
                         line.startsWith("[Merger]") ||
                         line.contains("ERROR", ignoreCase = true)
@@ -421,9 +437,11 @@ class ConverterViewModel(
                                 },
                                 stageMessage = when {
                                     localStage != null -> localStage
+                                    imageStage != null -> imageStage
                                     downloadStage != null -> downloadStage
                                     snapshot.inputSource == InputSource.LOCAL_FILE ->
                                         if (progress >= 95f) "Menyimpan hasil media…" else "Mengonversi file media…"
+                                    snapshot.mode == OutputMode.IMAGE -> "Menyimpan gambar dari tautan…"
                                     parsedTitle != null && snapshot.mode == OutputMode.MP3 ->
                                         "Tautan terdeteksi — menyiapkan audio…"
                                     parsedTitle != null -> "Tautan terdeteksi — menyiapkan video…"
@@ -432,8 +450,8 @@ class ConverterViewModel(
                                     else -> "Mengunduh dan menyiapkan MP4…"
                                 },
                                 lastLogLine = when {
-                                    parsedTitle != null || downloadStage != null ||
-                                        localStage != null || line.startsWith("LOCAL_") -> null
+                                    parsedTitle != null || downloadStage != null || imageStage != null ||
+                                        localStage != null || line.startsWith("LOCAL_") || line.startsWith("IMAGE_") -> null
                                     else -> line.take(180)
                                 }
                             )
@@ -464,7 +482,11 @@ class ConverterViewModel(
                         progress = 100f,
                         etaSeconds = 0L,
                         isProgressIndeterminate = false,
-                        stageMessage = "Selesai — disimpan ke Download/UBAHVO.",
+                        stageMessage = if (snapshot.mode == OutputMode.IMAGE) {
+                            "Gambar berhasil disimpan ke Download/UBAHVO."
+                        } else {
+                            "Selesai — disimpan ke Download/UBAHVO."
+                        },
                         outputUri = result.uri,
                         outputName = result.displayName,
                         outputMimeType = result.mimeType,
@@ -514,6 +536,7 @@ class ConverterViewModel(
 
     private fun friendlyError(error: Exception): String {
         if (error is LocalMediaConversionException) return error.userMessage
+        if (error is ImageLinkException) return error.userMessage
         val detail = error.message.orEmpty()
         return when {
             detail.contains("private", ignoreCase = true) ||

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.16
+
+- Add a first-party Kotlin image-link pipeline for direct HTTPS image assets and the primary image declared by public Open Graph/Twitter metadata. This image path does not invoke yt-dlp or FFmpeg.
+- Detect image formats from file signatures rather than trusting the URL extension or response MIME alone; preserve recognized JPEG, PNG, WebP, GIF, AVIF, HEIC, and BMP payloads and publish through MediaStore with the corresponding extension and MIME type.
+- Add bounded redirects, HTTPS/public-host validation, timeouts, size limits, cancellation checks, partial-file cleanup, metadata title-based filenames, and progress stages.
+- Add an image/wallpaper mode to the link UI. Local-file conversion remains MP3/MP4; the image mode is deliberately restricted to web links in this milestone.
+- Add parser/signature tests and document the first-party tooling direction. Public page metadata may expose only a preview image; complete TikTok-style photo carousels need dedicated, source-specific adapters and are not claimed yet.
+
 ## 0.1.0-beta.15
 
 - Remove the unbounded “Terbaik” quality option. Every video quality choice now applies an explicit maximum resolution, and the default remains 720p.
