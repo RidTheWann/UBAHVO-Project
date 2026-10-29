@@ -49,18 +49,27 @@ internal object AppUpdateChecker {
 
     fun checkForUpdate(context: Context): AppUpdateInfo? {
         val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        val currentVersion = installedVersion(context)
         val pending = pendingUpdate(
             preferences.getString(KEY_PENDING_TAG, null),
             preferences
         )
-        if (pending != null && preferences.getString(KEY_LAST_NOTIFIED_TAG, null) != pending.tag) {
+        if (pending != null &&
+            isNewerVersion(pending.versionName, currentVersion) &&
+            preferences.getString(KEY_LAST_NOTIFIED_TAG, null) != pending.tag
+        ) {
             return pending
+        }
+        if (pending != null && !isNewerVersion(pending.versionName, currentVersion)) {
+            preferences.edit()
+                .remove(KEY_PENDING_TAG)
+                .remove(KEY_PENDING_VERSION)
+                .remove(KEY_PENDING_URL)
+                .apply()
         }
 
         val now = System.currentTimeMillis()
         if (now - preferences.getLong(KEY_LAST_CHECK_AT, 0L) < CHECK_INTERVAL_MS) return null
-
-        val currentVersion = installedVersion(context)
         try {
             val candidate = findNewerRelease(fetchReleases(), currentVersion)
             preferences.edit().putLong(KEY_LAST_CHECK_AT, now).apply()
