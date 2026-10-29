@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.13
+
+- Add `x86_64` to the Rust static-library and C++/NDK runtime build, enabling a native UBAHVO build for compatible Android emulator images and Intel Android devices.
+- Build per-ABI APKs for `arm64-v8a`, `armeabi-v7a`, and `x86_64`, while retaining one universal APK for users who prefer a single download.
+- Build an optimized Android App Bundle (AAB) candidate in CI for future Google Play distribution; keep it unsigned until a permanent owner-controlled upload key is configured securely.
+- Measure universal and ABI-specific APK sizes in CI instead of assuming the universal package meets the 100,000,000-byte target.
+- Expand media link support in beta.12 to supported public HTTPS URLs from multiple yt-dlp extractors. Local-file conversion is still a separate planned engine and is not claimed as available.
+- Native conversion still has the documented upstream FFmpeg 16 KB memory-page compatibility restriction; adding `x86_64` does not resolve that dependency issue.
+
 ## 0.1.0-beta.12
 
 - Expand URL preflight from YouTube-only URLs to supported HTTPS media links across multiple yt-dlp extractors while preserving single-video validation for YouTube.
