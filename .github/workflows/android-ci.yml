@@ -100,7 +100,7 @@ jobs:
       - name: Test, build ABI APKs, and package an optimized AAB candidate
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
 
-      - name: Verify universal UBAHVO ARM APK
+      - name: Verify universal and ABI-specific UBAHVO APKs
         shell: bash
         run: |
           set -euo pipefail
@@ -197,7 +197,7 @@ jobs:
       - name: Upload UBAHVO universal APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ubahvo-universal-arm-apk
+          name: ubahvo-beta13-apks
           path: app/build/outputs/apk/debug/UBAHVO-*-debug.apk
           if-no-files-found: error
           retention-days: 14
