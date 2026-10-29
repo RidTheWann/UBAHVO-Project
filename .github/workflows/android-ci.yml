@@ -40,7 +40,7 @@ jobs:
             rustup toolchain install stable --profile minimal --component rustfmt
             rustup default stable
           fi
-          rustup target add aarch64-linux-android armv7-linux-androideabi
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
           cargo fmt --manifest-path app/src/main/rust/Cargo.toml -- --check
           cargo test --manifest-path app/src/main/rust/Cargo.toml --locked
 
@@ -68,7 +68,8 @@ jobs:
             local host_root="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64"
             [[ -x "$host_root/bin/clang" &&
                -s "$host_root/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" &&
-               -s "$host_root/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" ]]
+               -s "$host_root/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" &&
+               -s "$host_root/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so" ]]
           }
 
           for attempt in 1 2 3; do
@@ -96,8 +97,8 @@ jobs:
           gradle-version: "8.13"
           cache-provider: basic
 
-      - name: Run unit tests and assemble the universal ARM APK
-        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+      - name: Test, build ABI APKs, and package an optimized AAB candidate
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
 
       - name: Verify universal UBAHVO ARM APK
         shell: bash
@@ -125,7 +126,7 @@ jobs:
           if (( APK_SIZE_BYTES >= 100000000 )); then
             echo "::warning title=Universal APK size::The universal APK is $APK_SIZE_BYTES bytes, above the 100 MB download target."
           fi
-          for ABI in arm64-v8a armeabi-v7a; do
+          for ABI in arm64-v8a armeabi-v7a x86_64; do
             if ! unzip -Z1 "$APK" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
               echo "Universal APK is missing the C++ runtime for $ABI." >&2
               exit 1
@@ -139,6 +140,38 @@ jobs:
               exit 1
             fi
           done
+
+          # Verify each architecture-specific APK is lean and contains the matching native runtime.
+          for ABI in arm64-v8a armeabi-v7a x86_64; do
+            SPLIT_APK="app/build/outputs/apk/debug/UBAHVO-${VERSION}-${ABI}-debug.apk"
+            if [[ ! -s "$SPLIT_APK" ]]; then
+              echo "Missing or empty ABI-specific APK: $SPLIT_APK" >&2
+              exit 1
+            fi
+            if ! unzip -Z1 "$SPLIT_APK" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
+              echo "ABI APK is missing the matching C++ runtime for $ABI." >&2
+              exit 1
+            fi
+            if ! unzip -Z1 "$SPLIT_APK" | grep -Fqx "lib/$ABI/libubahvo_native.so"; then
+              echo "ABI APK is missing the Rust/C++ core for $ABI." >&2
+              exit 1
+            fi
+            SPLIT_SIZE_BYTES="$(stat -c '%s' "$SPLIT_APK")"
+            echo "ABI APK size ($ABI): $SPLIT_SIZE_BYTES bytes."
+            printf -- '- %s APK: %s bytes\n' "$ABI" "$SPLIT_SIZE_BYTES" >> "$GITHUB_STEP_SUMMARY"
+            if (( SPLIT_SIZE_BYTES >= 100000000 )); then
+              echo "::warning title=ABI APK size::The $ABI APK is $SPLIT_SIZE_BYTES bytes, above the 100 MB download target."
+            fi
+          done
+
+          # Verify the optimized App Bundle build exists. It is intentionally not Play-uploadable
+          # until it is signed with the owner's permanent upload key.
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          if [[ ! -s "$AAB" ]]; then
+            echo "Missing or empty optimized release App Bundle candidate: $AAB" >&2
+            exit 1
+          fi
+          echo "Optimized unsigned AAB candidate: $(stat -c '%s' "$AAB") bytes."
 
           # Verify the minified APK kept the reflective no-argument constructor that
           # Apache Commons Compress 1.12 uses to register AsiExtraField at class init.
@@ -165,6 +198,14 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ubahvo-universal-arm-apk
-          path: app/build/outputs/apk/debug/UBAHVO-*-universal-debug.apk
+          path: app/build/outputs/apk/debug/UBAHVO-*-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload unsigned optimized App Bundle candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ubahvo-unsigned-release-aab-candidate
+          path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
