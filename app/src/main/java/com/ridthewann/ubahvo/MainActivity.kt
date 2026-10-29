@@ -151,6 +151,8 @@ class MainActivity : ComponentActivity() {
                         }
                     } else if (
                         Build.VERSION.SDK_INT >= 33 &&
+                        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                            PackageManager.PERMISSION_GRANTED &&
                         !getSharedPreferences(AppUpdateChecker.PREFERENCES_NAME, MODE_PRIVATE)
                             .getBoolean(AppUpdateChecker.KEY_NOTIFICATION_PERMISSION_ASKED, false)
                     ) {

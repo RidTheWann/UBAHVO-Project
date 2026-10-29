@@ -18,9 +18,11 @@ internal object AppUpdateNotifications {
     private const val NOTIFICATION_ID = 1601
 
     fun canPost(context: Context): Boolean {
-        return Build.VERSION.SDK_INT < 33 ||
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
+        ) return false
+        return context.getSystemService(NotificationManager::class.java)?.areNotificationsEnabled() == true
     }
 
     fun show(context: Context, update: AppUpdateInfo): Boolean {

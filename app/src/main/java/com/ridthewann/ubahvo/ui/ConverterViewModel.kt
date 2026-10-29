@@ -547,7 +547,7 @@ class ConverterViewModel(
                 "Situs atau tautan ini belum didukung, atau sumber tidak menyediakan media yang dapat disimpan. Coba tautan langsung ke satu item media."
             detail.contains("No .mp4 output", ignoreCase = true) ||
                 detail.contains("No .mp3 output", ignoreCase = true) ->
-                "File hasil belum berhasil dibuat. Coba lagi; jika terulang, perbarui dukungan tautan."
+                "File hasil belum berhasil dibuat. Coba lagi saat terhubung internet; UBAHVO memeriksa pembaruan komponen secara otomatis saat aplikasi dibuka."
             detail.isNotBlank() ->
                 "Belum bisa menyimpan konten. Periksa koneksi internet, pastikan tautan media aktif dan ruang penyimpanan cukup, lalu coba lagi."
             else ->
