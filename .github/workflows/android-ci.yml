@@ -11,7 +11,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  # Use the PR source branch for both push and pull_request events so the same commit is not built twice.
+  group: android-ci-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
