@@ -200,7 +200,7 @@ jobs:
       - name: Upload UBAHVO universal APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ubahvo-beta13-apks
+          name: ubahvo-beta-apks
           path: app/build/outputs/apk/debug/UBAHVO-*-debug.apk
           if-no-files-found: error
           retention-days: 14
