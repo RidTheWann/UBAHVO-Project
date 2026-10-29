@@ -28,17 +28,17 @@ internal object DownloadOutputParser {
                 normalized.contains("extracting url: https://") ->
                 "Membuka tautan sumber…"
 
+            normalized.contains("downloading player api") ||
+                normalized.contains("downloading m3u8 information") ||
+                normalized.contains("downloading dash manifest") ||
+                normalized.contains("downloading mpd manifest") ->
+                "Menganalisis format dan kualitas yang tersedia…"
+
             normalized.contains("downloading webpage") ||
                 normalized.contains("downloading api json") ||
                 normalized.contains("downloading player") ||
                 normalized.contains("downloading innertube") ->
                 "Mengambil informasi video dari sumber…"
-
-            normalized.contains("downloading m3u8 information") ||
-                normalized.contains("downloading dash manifest") ||
-                normalized.contains("downloading mpd manifest") ||
-                normalized.contains("downloading player api") ->
-                "Menganalisis format dan kualitas yang tersedia…"
 
             normalized.startsWith("[info]") &&
                 normalized.contains("downloading") &&
