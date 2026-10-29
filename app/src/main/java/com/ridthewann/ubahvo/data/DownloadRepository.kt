@@ -99,7 +99,10 @@ class DownloadRepository(context: Context) {
             addOption("--newline")
             // Print the title during this same extraction, avoiding a separate --dump-json run.
             addOption("--print", "before_dl:UBAHVO_TITLE:%(title)s")
-            // Explicit progress keeps the transfer indicator visible even though --print implies quiet.
+            // Re-enable extractor messages suppressed by --print's quiet default so the UI can
+            // report webpage/player/format stages while the transfer is still at 0%.
+            addOption("--no-quiet")
+            // Explicit progress keeps the transfer indicator visible when normal logging is enabled.
             addOption("--progress")
             // The upstream wrapper disables yt-dlp's cache unless --cache-dir is explicit.
             // Retain its small extractor/player-function cache between conversion attempts.
