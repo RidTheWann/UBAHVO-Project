@@ -39,7 +39,7 @@ class DownloadOutputParserTest {
             DownloadOutputParser.stageMessageFromLine("[youtube] abc: Downloading webpage", OutputMode.MP4)
         )
         assertEquals(
-            "Mengambil informasi video dari sumber…",
+            "Menganalisis format dan kualitas yang tersedia…",
             DownloadOutputParser.stageMessageFromLine("[youtube] abc: Downloading android player API JSON", OutputMode.MP4)
         )
     }
