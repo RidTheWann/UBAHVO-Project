@@ -12,7 +12,7 @@ internal data class LocalMediaProbeInfo(
 /** Pure conversion planning: no subprocess execution and no shell interpolation. */
 internal object LocalMediaConversionPlanner {
     private val objectMapper = ObjectMapper()
-    private val encoderLine = Regex("""^\\s*[VAS.][A-Z.]{5}\\s+([A-Za-z0-9_]+)\\s""")
+    private val encoderLine = Regex("^\\s*[VAS.][A-Z.]{5}\\s+([A-Za-z0-9_]+)\\s")
 
     fun parseProbeJson(output: String): LocalMediaProbeInfo {
         val start = output.indexOf('{')

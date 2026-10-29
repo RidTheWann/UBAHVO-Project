@@ -187,7 +187,7 @@ internal class LocalMediaConverter(
                         if (count < 0) break
                         val required = copied + count
                         val free = destination.parentFile?.usableSpace ?: 0L
-                        if (required > free - MINIMUM_FREE_SPACE_RESERVE) {
+                        if (count.toLong() > free - MINIMUM_FREE_SPACE_RESERVE) {
                             throw LocalMediaConversionException(
                                 "Penyimpanan sementara penuh saat menyalin file. Kosongkan ruang lalu coba lagi."
                             )
