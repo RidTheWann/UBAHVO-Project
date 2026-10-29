@@ -100,7 +100,7 @@ fun ConverterScreen(
                             verticalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
                             Text(
-                                "Dukungan video otomatis",
+                                "Dukungan tautan otomatis",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -213,7 +213,7 @@ fun ConverterScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "2. Tempel tautan video",
+                            "2. Tempel tautan media",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -224,14 +224,14 @@ fun ConverterScreen(
                         onValueChange = viewModel::onUrlChanged,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !state.isBusy && !state.isUpdatingYtDlp,
-                        label = { Text("Tautan YouTube") },
-                        placeholder = { Text("Tempel tautan di sini") },
+                        label = { Text("Tautan media") },
+                        placeholder = { Text("Tempel tautan https:// di sini") },
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp)
                     )
 
                     Text(
-                        text = "Buka YouTube, pilih Bagikan, lalu pilih UBAHVO. Kamu juga bisa menempel tautan di sini. Satu video setiap kali; playlist tidak didukung.",
+                        text = "Di situs atau aplikasi sumber, pilih Bagikan lalu UBAHVO, atau tempel tautan di sini. Banyak situs media didukung, tetapi tidak semua tautan dijamin bekerja. Playlist dan unduhan sekaligus belum didukung.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -652,7 +652,7 @@ private fun Header() {
                 letterSpacing = 0.4.sp
             )
             Text(
-                "Video YouTube jadi MP4 atau MP3",
+                "Tautan media jadi MP4 atau MP3",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
