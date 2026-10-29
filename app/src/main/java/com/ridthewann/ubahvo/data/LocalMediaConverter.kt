@@ -5,6 +5,8 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.ridthewann.ubahvo.core.OutputMode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.InternalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -187,6 +189,7 @@ internal class LocalMediaConverter(
         if (process.isAlive) runCatching { process.destroyForcibly() }
     }
 
+    @OptIn(InternalCoroutinesApi::class)
     private suspend fun copyInput(
         uri: Uri,
         destination: File,
@@ -203,11 +206,21 @@ internal class LocalMediaConverter(
             )
         } ?: throw LocalMediaConversionException("File tidak dapat dibuka. Pilih ulang file dari perangkat.")
 
+        // A cancellation completion hook closes the active SAF stream before the cancelled
+        // coroutine returns. This matters for cloud-backed providers whose read() can block.
+        val cancellationHandle = coroutineContext[Job]?.invokeOnCompletion(
+            onCancelling = true,
+            invokeImmediately = true
+        ) { cause ->
+            if (cause is CancellationException) {
+                runCatching { input.close() }
+            }
+        }
+        var copied = 0L
         try {
             input.buffered().use { source ->
                 destination.outputStream().buffered().use { target ->
                     val buffer = ByteArray(COPY_BUFFER_SIZE)
-                    var copied = 0L
                     var lastProgress = -1f
                     while (true) {
                         coroutineContext.ensureActive()
@@ -232,6 +245,11 @@ internal class LocalMediaConverter(
                     }
                 }
             }
+            if (expectedSize != null && expectedSize > 0L && copied < expectedSize) {
+                throw LocalMediaConversionException(
+                    "File sumber tidak lengkap: ukuran yang terbaca lebih kecil dari ukuran yang dilaporkan. Pilih ulang file lalu coba lagi."
+                )
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -240,6 +258,8 @@ internal class LocalMediaConverter(
                 "File tidak dapat disalin ke area kerja. Periksa akses file dan ruang penyimpanan.",
                 error
             )
+        } finally {
+            cancellationHandle?.dispose()
         }
 
         if (!destination.isFile || destination.length() <= 0L) {
