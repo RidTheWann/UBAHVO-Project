@@ -30,7 +30,7 @@ data class ConverterUiState(
     val isBusy: Boolean = false,
     val progress: Float = 0f,
     val etaSeconds: Long = 0L,
-    val stageMessage: String = "Tempel tautan video untuk memulai.",
+    val stageMessage: String = "Tempel tautan media untuk memulai.",
     val videoTitle: String? = null,
     val errorMessage: String? = null,
     val outputUri: Uri? = null,
@@ -54,7 +54,7 @@ class ConverterViewModel(
     private val _uiState = MutableStateFlow(
         ConverterUiState(
             stageMessage = if (application.engineReady) {
-                "Tempel tautan video untuk memulai."
+                "Tempel tautan media untuk memulai."
             } else {
                 "Fitur simpan belum tersedia di perangkat ini."
             },
@@ -425,16 +425,16 @@ class ConverterViewModel(
             detail.contains("private", ignoreCase = true) ||
                 detail.contains("members-only", ignoreCase = true) ||
                 detail.contains("sign in", ignoreCase = true) ->
-                "Video ini tampaknya privat atau membutuhkan akses akun. Aplikasi tidak melewati pembatasan tersebut."
+                "Konten ini tampaknya privat atau membutuhkan akses akun. Aplikasi tidak melewati pembatasan tersebut."
             detail.contains("Unsupported URL", ignoreCase = true) ->
                 "Situs atau tautan ini belum didukung, atau sumber tidak menyediakan media yang dapat disimpan. Coba tautan langsung ke satu item media."
             detail.contains("No .mp4 output", ignoreCase = true) ||
                 detail.contains("No .mp3 output", ignoreCase = true) ->
                 "File hasil belum berhasil dibuat. Coba lagi; jika terulang, perbarui dukungan tautan."
             detail.isNotBlank() ->
-                "Belum bisa menyimpan konten. Periksa koneksi internet, pastikan video tersedia dan ruang penyimpanan cukup, lalu coba lagi."
+                "Belum bisa menyimpan konten. Periksa koneksi internet, pastikan tautan media aktif dan ruang penyimpanan cukup, lalu coba lagi."
             else ->
-                "Konversi gagal. Periksa koneksi internet dan pastikan video tersedia."
+                "Konversi gagal. Periksa koneksi internet dan pastikan tautan media aktif."
         }
     }
 
