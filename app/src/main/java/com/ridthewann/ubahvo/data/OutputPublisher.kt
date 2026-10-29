@@ -10,7 +10,16 @@ import java.io.File
 import java.io.IOException
 
 class OutputPublisher(private val context: Context) {
-    fun publish(source: File, mimeType: String): PublishedOutput {
+    private companion object {
+        const val COPY_BUFFER_SIZE = 64 * 1024
+    }
+
+    fun publish(
+        source: File,
+        mimeType: String,
+        cancellationCheck: () -> Unit = {}
+    ): PublishedOutput {
+        cancellationCheck()
         if (!source.isFile || source.length() <= 0L) {
             throw IOException("The converted output file is missing or empty.")
         }
@@ -35,9 +44,19 @@ class OutputPublisher(private val context: Context) {
             source.inputStream().buffered().use { input ->
                 val outputStream = resolver.openOutputStream(uri, "w")
                     ?: throw IOException("Android could not open the output stream.")
-                outputStream.buffered().use { output -> input.copyTo(output) }
+                outputStream.buffered().use { output ->
+                    val buffer = ByteArray(COPY_BUFFER_SIZE)
+                    while (true) {
+                        cancellationCheck()
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        output.write(buffer, 0, count)
+                    }
+                }
             }
 
+            // Keep the item hidden until every byte has been copied and cancellation was checked.
+            cancellationCheck()
             val publishValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
             }
@@ -45,13 +64,19 @@ class OutputPublisher(private val context: Context) {
             if (updatedRows != 1) {
                 throw IOException("Android could not publish the completed output file.")
             }
+            cancellationCheck()
 
             return PublishedOutput(uri, displayName, mimeType)
         } catch (error: Exception) {
-            // Do not leave a broken or permanently pending MediaStore entry behind.
+            // Also removes the row if cancellation arrives after IS_PENDING was cleared.
             runCatching { resolver.delete(uri, null, null) }
             throw error
         }
+    }
+
+    /** Delete a just-published output if cancellation wins the race immediately after publication. */
+    fun discard(uri: Uri) {
+        runCatching { context.contentResolver.delete(uri, null, null) }
     }
 
     /**
