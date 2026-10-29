@@ -35,11 +35,12 @@ class VideoFormatSelectorTest {
     }
 
     @Test
-    fun bestQualityDoesNotApplyAResolutionCap() {
-        val format = VideoFormatSelector.forQuality(VideoQuality.BEST)
+    fun everyQualityIsExplicitlyCappedAndThereIsNoBestOption() {
+        assertTrue(VideoQuality.entries.none { it.label.equals("Terbaik", ignoreCase = true) })
+        assertTrue(VideoQuality.entries.all { it.maxHeight > 0 })
 
-        assertTrue(format.contains("bestvideo[ext=mp4]+bestaudio[ext=m4a]"))
-        assertTrue(format.contains("/(bestvideo+bestaudio/best)"))
-        assertFalse(format.contains("height<="))
+        val format = VideoFormatSelector.forQuality(VideoQuality.P1080)
+        assertTrue(format.contains("height<=1080"))
+        assertFalse(format.contains("height<=4320"))
     }
 }

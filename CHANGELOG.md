@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.15
+
+- Remove the unbounded “Terbaik” quality option. Every video quality choice now applies an explicit maximum resolution, and the default remains 720p.
+- Mark 8K (4320p) and 4K (2160p) with visible compatibility warnings. Playback depends on device decoder support, codec, and frame rate; a downloaded file may not play smoothly even if the download completed.
+- Update the app version to beta.15 and refresh the current release documentation.
+
 ## 0.1.0-beta.14
 
 - Add remote-video quality caps for 8K (4320p), 4K (2160p), and 1440p alongside the existing choices. Requested resolution is capped only when the source offers a matching format.
