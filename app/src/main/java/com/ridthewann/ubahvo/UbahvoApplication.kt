@@ -53,13 +53,17 @@ class UbahvoApplication : Application() {
                     pageSizeBytes = detectedPageSize
 
                     val result = NativeMediaStartup.initialize(detectedPageSize) { setStage ->
-                        onStage(setStage)
-                        when (setStage) {
-                            "Inisialisasi yt-dlp" -> YoutubeDL.getInstance().init(this@UbahvoApplication)
-                            "Inisialisasi FFmpeg" -> FFmpeg.getInstance().init(this@UbahvoApplication)
-                            "Perbaikan runtime C++ FFmpeg" ->
-                                NativeRuntimeRepair.ensureFfmpegCppRuntime(this@UbahvoApplication)
-                        }
+                        setStage("Inisialisasi yt-dlp")
+                        onStage("Inisialisasi yt-dlp")
+                        YoutubeDL.getInstance().init(this@UbahvoApplication)
+
+                        setStage("Inisialisasi FFmpeg")
+                        onStage("Inisialisasi FFmpeg")
+                        FFmpeg.getInstance().init(this@UbahvoApplication)
+
+                        setStage("Perbaikan runtime C++ FFmpeg")
+                        onStage("Menyiapkan runtime media…")
+                        NativeRuntimeRepair.ensureFfmpegCppRuntime(this@UbahvoApplication)
                     }
 
                     engineReady = result.engineReady
