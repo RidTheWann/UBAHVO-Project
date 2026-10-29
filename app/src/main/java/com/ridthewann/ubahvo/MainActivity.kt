@@ -7,7 +7,14 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.ridthewann.ubahvo.ui.ConverterScreen
 import com.ridthewann.ubahvo.ui.ConverterViewModel
 import com.ridthewann.ubahvo.ui.ConverterViewModelFactory
@@ -26,11 +33,36 @@ class MainActivity : ComponentActivity() {
         readSharedText(intent)
 
         setContent {
+            val localFilePicker = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument()
+            ) { uri ->
+                if (uri != null) {
+                    // This URI is consumed by the current one-shot conversion only. Do not persist
+                    // a read grant across reboots; the input is copied into private cache at start.
+                    // Document providers can be slow (especially cloud-backed files), so keep all
+                    // metadata IPC off the main thread to avoid freezing the UI or triggering an ANR.
+                    lifecycleScope.launch {
+                        val details = withContext(Dispatchers.IO) {
+                            queryLocalFileDetails(uri)
+                        }
+                        viewModel.onLocalFileSelected(
+                            uri = uri,
+                            displayName = details.displayName,
+                            mimeType = details.mimeType,
+                            sizeBytes = details.sizeBytes
+                        )
+                    }
+                }
+            }
+
             UbahvoTheme {
                 ConverterScreen(
                     viewModel = viewModel,
                     onOpenOutput = ::openOutput,
-                    onShareOutput = ::shareOutput
+                    onShareOutput = ::shareOutput,
+                    onPickLocalFile = {
+                        localFilePicker.launch(arrayOf("video/*", "audio/*", "application/octet-stream"))
+                    }
                 )
             }
         }
@@ -79,4 +111,43 @@ class MainActivity : ComponentActivity() {
         }
         startActivity(Intent.createChooser(sendIntent, getString(R.string.share_output)))
     }
+
+    private fun queryLocalFileDetails(uri: Uri): LocalFileDetails {
+        var displayName = "media_input"
+        var sizeBytes: Long? = null
+        var mimeType: String? = null
+
+        // A remote/document provider can throw or block while responding. Call this method only
+        // from Dispatchers.IO, and retain useful defaults if metadata is unavailable.
+        try {
+            contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0 && !cursor.isNull(nameIndex)) {
+                        displayName = cursor.getString(nameIndex)?.takeIf { it.isNotBlank() } ?: displayName
+                    }
+                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                        sizeBytes = cursor.getLong(sizeIndex).takeIf { it > 0L }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // Use the fallback name and unknown size if the provider cannot return metadata.
+        }
+
+        mimeType = try {
+            contentResolver.getType(uri)
+        } catch (_: Exception) {
+            null
+        }
+        return LocalFileDetails(displayName, sizeBytes, mimeType)
+    }
+    private data class LocalFileDetails(val displayName: String, val sizeBytes: Long?, val mimeType: String?)
 }

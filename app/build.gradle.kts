@@ -18,8 +18,8 @@ android {
         applicationId = "com.ridthewann.ubahvo"
         minSdk = 29
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.1.0-beta.13"
+        versionCode = 14
+        versionName = "0.1.0-beta.14"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Keep only the locales used by the current Indonesian UI and English fallback.
         resourceConfigurations += setOf("en", "id")
@@ -251,7 +251,7 @@ tasks.named("preBuild").configure {
 // Give both the one-file universal APK and each lean ABI-specific APK stable product names.
 val renameUbahvoDebugApks = tasks.register("renameUbahvoDebugApks") {
     group = "build"
-    description = "Renames the single universal ARM debug APK to the UBAHVO product name."
+    description = "Renames the universal and ABI-specific debug APKs to stable UBAHVO product names."
 
     doLast {
         val apkDirectory = layout.buildDirectory.dir("outputs/apk/debug").get().asFile

@@ -50,3 +50,43 @@ The beta.13 workflow also builds an optimized release AAB candidate to catch rel
 The x86_64 Rust/C++ target improves build/test coverage on compatible Android emulators, but does not resolve the third-party FFmpeg 0.18.1 16 KB memory-page alignment issue. Keep the conservative conversion gate until the bundled media payload is corrected and validated on affected devices.
 
 An ABI packaging change is not a media-engine redesign. Local file conversion remains a separate future phase with file-picker/URI access, explicit input/output format planning, cancellation, partial-output cleanup, and format-by-format license and device compatibility validation.
+
+## Local-file conversion path (beta.14)
+
+Beta.14 adds a separate local-file engine rather than feeding filesystem URIs into yt-dlp. Android's document picker provides the selected content URI; UBAHVO copies the input into app-private cache so the native FFmpeg process can read a regular file path. FFprobe inspects streams and duration before conversion. The planner chooses only encoders reported by the bundled FFmpeg executable and rejects unsupported input/output combinations before a conversion process begins.
+
+- MP3 requires an audio stream and an available MP3 encoder (`libmp3lame` or `libshine`).
+- MP4 requires a video stream and an available video encoder (`libx264` or `mpeg4`); when audio is present, an AAC encoder is also required.
+- Conversion uses argument arrays through `ProcessBuilder`, not a shell string. Inputs/outputs are kept under a job-specific private cache directory, progress uses FFmpeg's machine-readable progress output, cancellation terminates the active subprocess, and temporary files are deleted in `finally`.
+- Completed outputs are published through the existing MediaStore path and appear in recent history. The document picker is used instead of broad storage permissions.
+- Automated JVM tests cover probe parsing, attached album art, encoder detection/selection, invalid stream combinations, and progress math. They cannot establish that every upstream binary/codec runs on real devices; physical-device tests remain required.
+- The feature continues to use the current engine readiness/page-size gate. It does not bypass the documented 16 KB page-size limitation in the third-party FFmpeg payload.
+
+## Measured beta.13 artifact sizes
+
+The successful CI run for commit `a26d10f05eefef2b715ac8291772fdbb6ca2d41e` measured these final downloadable artifacts:
+
+| Artifact | Bytes | Approx. decimal MB |
+| --- | ---: | ---: |
+| Universal APK (ARM + x86_64) | 160,842,926 | 160.84 MB |
+| `arm64-v8a` APK | 62,937,041 | 62.94 MB |
+| `armeabi-v7a` APK | 56,174,703 | 56.17 MB |
+| `x86_64` APK | 65,959,270 | 65.96 MB |
+| Optimized unsigned AAB candidate | 157,591,726 | 157.59 MB |
+
+The universal APK is 60,842,926 bytes above the 100,000,000-byte target, so the target is **not met** by the one-file download. The three ABI-specific APKs remain below that threshold individually and avoid bundling the unused architecture's native payload. The AAB is a build artifact, not the same thing as a device-specific download: Google Play normally generates optimized install APKs from a properly signed App Bundle. The measured AAB remains unsigned and must not be represented as ready to publish.
+
+These sizes come from the CI run for beta.13 and are not guarantees for future builds; record the new workflow summary each time a release changes native dependencies, scripts, resources, or build settings.
+
+## App Bundle build separation
+
+The beta.13 CI attempt confirmed that Android Gradle Plugin fails when ABI-split APK resource shrinking and AAB packaging are requested in the same task graph. CI now builds the split/universal APKs first, then performs a second Gradle invocation with `-Pubahvo.bundleOnly=true` so ABI splits are disabled for the AAB build. The AAB remains an unsigned candidate until secure production signing is configured.
+
+## High-resolution remote downloads and early progress feedback (beta.14 update)
+
+- Add 8K (4320p), 4K (2160p), and 1440p quality limits. The selector prefers MP4 video plus M4A audio when available, then falls back to video/audio streams in other source containers and asks yt-dlp/FFmpeg to remux to MP4. Availability depends on each source and its exposed formats; this does not invent higher resolutions when the source lacks them.
+- Permit four concurrent fragments for DASH/HLS downloads. This may improve transfer throughput for segmented high-bitrate sources, particularly high-resolution video, but it does not speed up the initial webpage/player/API extraction step and is not a universal speed guarantee.
+- Preserve the single yt-dlp extraction for title + download. Re-enable extractor log messages after the title marker so the UI can update its stage while extraction is underway; parse metadata, format selection, transfer destination, merge, and remux messages into user-facing progress text instead of leaving the same generic stage at 0%.
+- The above stage reporting improves feedback and diagnosis, not the remote server's actual extraction time. First visible percentage progress still depends on the source extractor and network; validate tap-to-first-progress on physical devices before making any numeric latency claim.
+- Language responsibilities remain deliberately separated: Kotlin owns Android UI, state, download orchestration, format selection, and progress/error mapping; C++ is the small JNI bridge; Rust performs bounded syntactic HTTPS media-URL preflight. Neither Rust nor C++ is being used to duplicate yt-dlp networking or FFmpeg encoding. Keep media transformations in the existing FFmpeg engine unless profiling identifies a proven bottleneck outside it.
+- Regression tests cover the resolution-capped format expression and stage-message parsing. CI and real-device conversion tests must pass before beta.14 is considered release-ready.

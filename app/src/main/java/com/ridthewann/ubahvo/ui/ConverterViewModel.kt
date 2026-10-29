@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ridthewann.ubahvo.UbahvoApplication
+import com.ridthewann.ubahvo.core.InputSource
 import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
 import com.ridthewann.ubahvo.data.DownloadRepository
@@ -13,6 +14,7 @@ import com.ridthewann.ubahvo.data.DownloadOutputParser
 import com.ridthewann.ubahvo.data.YtDlpAutoUpdatePolicy
 import com.ridthewann.ubahvo.data.RecentOutput
 import com.ridthewann.ubahvo.data.MediaUrlValidator
+import com.ridthewann.ubahvo.data.LocalMediaConversionException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,11 +26,17 @@ import java.util.UUID
 
 data class ConverterUiState(
     val url: String = "",
+    val inputSource: InputSource = InputSource.LINK,
+    val localFileUri: Uri? = null,
+    val localFileName: String? = null,
+    val localFileMimeType: String? = null,
+    val localFileSizeBytes: Long? = null,
     val mode: OutputMode = OutputMode.MP4,
     val quality: VideoQuality = VideoQuality.P720,
     val rightsConfirmed: Boolean = false,
     val isBusy: Boolean = false,
     val progress: Float = 0f,
+    val isProgressIndeterminate: Boolean = false,
     val etaSeconds: Long = 0L,
     val stageMessage: String = "Tempel tautan media untuk memulai.",
     val videoTitle: String? = null,
@@ -114,11 +122,58 @@ class ConverterViewModel(
     fun onUrlChanged(value: String) {
         _uiState.update {
             it.copy(
+                inputSource = InputSource.LINK,
                 url = value,
                 errorMessage = null,
                 outputUri = null,
                 outputName = null,
                 videoTitle = null
+            )
+        }
+    }
+
+    fun setInputSource(source: InputSource) {
+        _uiState.update { current ->
+            current.copy(
+                inputSource = source,
+                errorMessage = null,
+                outputUri = null,
+                outputName = null,
+                videoTitle = null,
+                isProgressIndeterminate = false,
+                stageMessage = when (source) {
+                    InputSource.LINK -> "Tempel tautan media untuk memulai."
+                    InputSource.LOCAL_FILE -> if (current.localFileUri == null) {
+                        "Pilih file audio atau video dari perangkat."
+                    } else {
+                        "File siap dikonversi."
+                    }
+                }
+            )
+        }
+    }
+
+    fun onLocalFileSelected(uri: Uri, displayName: String, mimeType: String?, sizeBytes: Long?) {
+        val name = displayName.trim().takeIf { it.isNotBlank() } ?: "media_input"
+        val extension = name.substringAfterLast('.', "").lowercase()
+        val isAudio = mimeType.orEmpty().startsWith("audio/") ||
+            extension in setOf("mp3", "aac", "m4a", "wav", "flac", "ogg", "opus", "wma")
+        val mode = if (isAudio) OutputMode.MP3 else OutputMode.MP4
+        _uiState.update {
+            it.copy(
+                inputSource = InputSource.LOCAL_FILE,
+                localFileUri = uri,
+                localFileName = name,
+                localFileMimeType = mimeType,
+                localFileSizeBytes = sizeBytes?.takeIf { size -> size > 0L },
+                mode = mode,
+                outputMimeType = mode.mimeType,
+                errorMessage = null,
+                outputUri = null,
+                outputName = null,
+                videoTitle = null,
+                isProgressIndeterminate = false,
+                stageMessage = "File siap dikonversi."
             )
         }
     }
@@ -282,24 +337,30 @@ class ConverterViewModel(
             _uiState.update {
                 it.copy(
                     errorMessage = application.engineError
-                        ?: "Fitur simpan belum siap. Tutup lalu buka kembali UBAHVO. Jika masalah berlanjut, coba lagi setelah pembaruan."
+                        ?: "Fitur media belum siap. Tutup lalu buka kembali UBAHVO. Jika masalah berlanjut, coba lagi setelah pembaruan."
                 )
             }
             return
         }
 
-        val normalizedUrl = MediaUrlValidator.normalize(snapshot.url)
-        if (normalizedUrl == null) {
+        val normalizedUrl = if (snapshot.inputSource == InputSource.LINK) {
+            MediaUrlValidator.normalize(snapshot.url)
+        } else null
+
+        if (snapshot.inputSource == InputSource.LINK && normalizedUrl == null) {
             _uiState.update {
                 it.copy(errorMessage = "Masukkan tautan HTTPS yang valid dari situs media yang didukung.")
             }
             return
         }
-
-        if (!snapshot.rightsConfirmed) {
+        if (snapshot.inputSource == InputSource.LOCAL_FILE && snapshot.localFileUri == null) {
             _uiState.update {
-                it.copy(errorMessage = "Centang kotak izin sebelum menyimpan.")
+                it.copy(errorMessage = "Pilih file audio atau video sebelum memulai konversi.")
             }
+            return
+        }
+        if (!snapshot.rightsConfirmed) {
+            _uiState.update { it.copy(errorMessage = "Centang kotak izin sebelum menyimpan.") }
             return
         }
 
@@ -311,7 +372,10 @@ class ConverterViewModel(
                     isBusy = true,
                     progress = 0f,
                     etaSeconds = 0L,
-                    stageMessage = "Menghubungkan ke video dan memilih kualitas…",
+                    isProgressIndeterminate = snapshot.inputSource == InputSource.LOCAL_FILE,
+                    stageMessage = if (snapshot.inputSource == InputSource.LOCAL_FILE) {
+                        "Menyiapkan file media…"
+                    } else "Menghubungkan ke sumber media…",
                     videoTitle = null,
                     errorMessage = null,
                     outputUri = null,
@@ -321,52 +385,77 @@ class ConverterViewModel(
             }
 
             try {
-                // Download directly: asking yt-dlp for metadata first runs a second extraction
-                // for the same URL and noticeably delays the first visible download progress.
                 var lastUiProgress = -1f
                 var lastUiEta = 0L
-                val result = repository.download(
-                    url = normalizedUrl,
-                    mode = snapshot.mode,
-                    quality = snapshot.quality,
-                    processId = processId
-                ) { progress, eta, line ->
-                    val parsedTitle = DownloadOutputParser.videoTitleFromLine(line)
+                val onProgress: (Float, Long, String) -> Unit = { progress, eta, line ->
+                    val parsedTitle = if (snapshot.inputSource == InputSource.LINK) {
+                        DownloadOutputParser.videoTitleFromLine(line)
+                    } else null
+                    val downloadStage = if (snapshot.inputSource == InputSource.LINK) {
+                        DownloadOutputParser.stageMessageFromLine(line, snapshot.mode)
+                    } else null
+                    val localStage = line.takeIf { it.startsWith("LOCAL_STAGE:") }?.removePrefix("LOCAL_STAGE:")
+                    val localIndeterminate = line == "LOCAL_MODE:indeterminate"
+                    val localDeterminate = line == "LOCAL_MODE:determinate"
                     val progressChanged = lastUiProgress < 0f ||
-                        kotlin.math.abs(progress - lastUiProgress) >= 0.5f ||
-                        progress >= 100f
+                        kotlin.math.abs(progress - lastUiProgress) >= 0.5f || progress >= 100f
                     val etaChanged = eta > 0L && eta != lastUiEta
-                    val importantLine = parsedTitle != null ||
+                    val importantLine = parsedTitle != null || downloadStage != null || localStage != null ||
+                        line.startsWith("LOCAL_MODE:") ||
                         line.startsWith("[download] Destination:") ||
                         line.startsWith("[Merger]") ||
                         line.contains("ERROR", ignoreCase = true)
 
-                    // StreamProcessExtractor may emit several diagnostic lines between progress
-                    // ticks. Avoid recomposing the full screen for every unchanged progress value.
                     if (parsedTitle != null || progressChanged || etaChanged || importantLine) {
                         if (progressChanged) lastUiProgress = progress
                         if (etaChanged) lastUiEta = eta
                         _uiState.update { current ->
                             current.copy(
-                                progress = progress,
-                                etaSeconds = eta,
+                                progress = progress.coerceIn(0f, 100f),
+                                etaSeconds = eta.coerceAtLeast(0L),
                                 videoTitle = parsedTitle ?: current.videoTitle,
+                                isProgressIndeterminate = when {
+                                    localIndeterminate -> true
+                                    localDeterminate -> false
+                                    else -> current.isProgressIndeterminate
+                                },
                                 stageMessage = when {
+                                    localStage != null -> localStage
+                                    downloadStage != null -> downloadStage
+                                    snapshot.inputSource == InputSource.LOCAL_FILE ->
+                                        if (progress >= 95f) "Menyimpan hasil media…" else "Mengonversi file media…"
                                     parsedTitle != null && snapshot.mode == OutputMode.MP3 ->
                                         "Tautan terdeteksi — menyiapkan audio…"
-                                    parsedTitle != null ->
-                                        "Tautan terdeteksi — menyiapkan video…"
-                                    current.videoTitle == null ->
-                                        "Memeriksa tautan dan memilih kualitas…"
-                                    snapshot.mode == OutputMode.MP3 ->
-                                        "Mengambil audio dan menyiapkan MP3…"
-                                    else ->
-                                        "Mengunduh dan menyiapkan MP4…"
+                                    parsedTitle != null -> "Tautan terdeteksi — menyiapkan video…"
+                                    current.videoTitle == null -> "Memeriksa tautan dan memilih kualitas…"
+                                    snapshot.mode == OutputMode.MP3 -> "Mengambil audio dan menyiapkan MP3…"
+                                    else -> "Mengunduh dan menyiapkan MP4…"
                                 },
-                                lastLogLine = if (parsedTitle != null) null else line.take(180)
+                                lastLogLine = when {
+                                    parsedTitle != null || downloadStage != null ||
+                                        localStage != null || line.startsWith("LOCAL_") -> null
+                                    else -> line.take(180)
+                                }
                             )
                         }
                     }
+                }
+
+                val result = when (snapshot.inputSource) {
+                    InputSource.LINK -> repository.download(
+                        url = normalizedUrl!!,
+                        mode = snapshot.mode,
+                        quality = snapshot.quality,
+                        processId = processId,
+                        onProgress = onProgress
+                    )
+                    InputSource.LOCAL_FILE -> repository.convertLocalFile(
+                        uri = snapshot.localFileUri!!,
+                        displayName = snapshot.localFileName ?: "media_input",
+                        mode = snapshot.mode,
+                        processId = processId,
+                        onProgress = onProgress
+                    )
                 }
 
                 _uiState.update {
@@ -374,6 +463,7 @@ class ConverterViewModel(
                         isBusy = false,
                         progress = 100f,
                         etaSeconds = 0L,
+                        isProgressIndeterminate = false,
                         stageMessage = "Selesai — disimpan ke Download/UBAHVO.",
                         outputUri = result.uri,
                         outputName = result.displayName,
@@ -386,6 +476,7 @@ class ConverterViewModel(
                 _uiState.update {
                     it.copy(
                         isBusy = false,
+                        isProgressIndeterminate = false,
                         stageMessage = "Proses dibatalkan.",
                         errorMessage = null
                     )
@@ -394,6 +485,7 @@ class ConverterViewModel(
                 _uiState.update {
                     it.copy(
                         isBusy = false,
+                        isProgressIndeterminate = false,
                         stageMessage = "Konversi gagal.",
                         errorMessage = friendlyError(error)
                     )
@@ -413,6 +505,7 @@ class ConverterViewModel(
         _uiState.update {
             it.copy(
                 isBusy = false,
+                isProgressIndeterminate = false,
                 stageMessage = "Proses dibatalkan.",
                 errorMessage = null
             )
@@ -420,6 +513,7 @@ class ConverterViewModel(
     }
 
     private fun friendlyError(error: Exception): String {
+        if (error is LocalMediaConversionException) return error.userMessage
         val detail = error.message.orEmpty()
         return when {
             detail.contains("private", ignoreCase = true) ||

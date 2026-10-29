@@ -2,6 +2,7 @@ package com.ridthewann.ubahvo.data
 
 import android.content.Context
 import android.os.Environment
+import android.net.Uri
 import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
 import com.yausername.youtubedl_android.YoutubeDL
@@ -20,6 +21,7 @@ data class YtDlpUpdateResult(
 class DownloadRepository(context: Context) {
     private val appContext = context.applicationContext
     private val publisher = OutputPublisher(appContext)
+    private val localMediaConverter = LocalMediaConverter(appContext, publisher)
 
     suspend fun updateYtDlp(): YtDlpUpdateResult = withContext(Dispatchers.IO) {
         StableYtDlpUpdater(appContext).update()
@@ -28,6 +30,14 @@ class DownloadRepository(context: Context) {
     suspend fun recentOutputs(limit: Int = 5): List<RecentOutput> = withContext(Dispatchers.IO) {
         publisher.recentOutputs(limit)
     }
+
+    suspend fun convertLocalFile(
+        uri: Uri,
+        displayName: String,
+        mode: OutputMode,
+        processId: String,
+        onProgress: (progress: Float, etaSeconds: Long, outputLine: String) -> Unit
+    ): PublishedOutput = localMediaConverter.convert(uri, displayName, mode, processId, onProgress)
 
     suspend fun download(
         url: String,
@@ -72,6 +82,7 @@ class DownloadRepository(context: Context) {
         runCatching {
             YoutubeDL.getInstance().destroyProcessById(processId)
         }
+        localMediaConverter.cancel(processId)
     }
 
     private fun buildRequest(
@@ -88,7 +99,10 @@ class DownloadRepository(context: Context) {
             addOption("--newline")
             // Print the title during this same extraction, avoiding a separate --dump-json run.
             addOption("--print", "before_dl:UBAHVO_TITLE:%(title)s")
-            // Explicit progress keeps the transfer indicator visible even though --print implies quiet.
+            // Re-enable extractor messages suppressed by --print's quiet default so the UI can
+            // report webpage/player/format stages while the transfer is still at 0%.
+            addOption("--no-quiet")
+            // Explicit progress keeps the transfer indicator visible when normal logging is enabled.
             addOption("--progress")
             // The upstream wrapper disables yt-dlp's cache unless --cache-dir is explicit.
             // Retain its small extractor/player-function cache between conversion attempts.
@@ -104,14 +118,11 @@ class DownloadRepository(context: Context) {
                     addOption("--audio-quality", "0")
                 }
                 OutputMode.MP4 -> {
-                    val height = quality.maxHeight
-                    val format = if (height == null) {
-                        "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
-                    } else {
-                        "bestvideo[ext=mp4][height<=$height]+bestaudio[ext=m4a]/" +
-                            "best[ext=mp4][height<=$height]/best[height<=$height]"
-                    }
-                    addOption("-f", format)
+                    addOption("-f", VideoFormatSelector.forQuality(quality))
+                    // DASH/HLS sources can expose video as many small fragments. Four concurrent
+                    // fragment requests improve throughput on high-bitrate 4K/8K sources without
+                    // requiring a separate downloader binary or changing the source's codec.
+                    addOption("--concurrent-fragments", "4")
                     addOption("--merge-output-format", "mp4")
                     addOption("--remux-video", "mp4")
                 }

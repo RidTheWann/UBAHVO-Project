@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.14
+
+- Add remote-video quality caps for 8K (4320p), 4K (2160p), and 1440p alongside the existing choices. Requested resolution is capped only when the source offers a matching format.
+- Prefer MP4 video and M4A audio where available, then fall back to other source containers for MP4 remuxing so higher-resolution sources such as WebM-based 8K streams can be selected when supported.
+- Allow four concurrent DASH/HLS fragments for improved throughput on supported segmented sources; actual speed remains dependent on source, connection, and device.
+- Show yt-dlp extraction, format-selection, download, merge, and remux stages before percentage progress starts, so the Save action no longer appears stuck at 0% without explanation.
+- Add local-file MP3/MP4 conversion through Android's document picker and the bundled FFprobe/FFmpeg executables.
+- Inspect media streams before conversion and select an available encoder; reject missing tracks and unsupported encoder combinations with actionable Indonesian errors.
+- Copy selected inputs into app-private cache, report progress when the source duration is available, allow process cancellation, clean temporary data, and publish completed outputs through the existing MediaStore path.
+- Add planner tests for probe parsing, attached album-art handling, available encoders, output-format validation, fallback encoders, and progress calculations.
+- Local conversion shares the app's existing page-size compatibility gate; real-device codec and cancellation testing remains required before a stable release.
+
 ## 0.1.0-beta.13
 
 - Add `x86_64` to the Rust static-library and C++/NDK runtime build, enabling a native UBAHVO build for compatible Android emulator images and Intel Android devices.

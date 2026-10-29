@@ -234,6 +234,7 @@ jobs:
           ## What's included
           - Kotlin + Jetpack Compose interface with plain-language labels.
           - MP4 video or MP3 audio from supported HTTPS media links across multiple yt-dlp extractors. Site coverage varies; playlists and batch downloads remain unsupported.
+          - Convert a user-selected local audio/video file to MP3 or MP4 with the bundled FFmpeg tools when the input streams and available encoders are compatible. Choose "File perangkat" in the app and select a file through Android's document picker; outputs are saved to Download/UBAHVO.
           - Progress, cancellation, recent output history, open/share actions, automatic background yt-dlp support updates, and a manual “Cek sekarang” action. Updates require HTTPS, approved GitHub hosts, and SHA-256 verification.
           - New output files are saved in Download/UBAHVO. Legacy files in Download/YoutubeConvert remain where they are; the app attempts to include them in recent history.
 
@@ -243,7 +244,7 @@ jobs:
           - These APKs are built from the Android debug variant and signed with the CI runner's debug key. Later beta builds can require reinstalling.
           - CI also builds an optimized release Android App Bundle (AAB) candidate, but this artifact is unsigned and is not a Play-ready release. A permanent owner-controlled upload key must be configured through secure CI signing settings.
           - Native conversion remains guarded on devices whose memory page size is not verified as 4 KB because the bundled FFmpeg 0.18.1 payload has a reported 16 KB alignment issue. Supporting x86_64 does not fix that upstream issue.
-          - CI validates unit tests, APK assembly, ABI-native runtime presence, and AAB packaging; it is not a substitute for physical-device MP3/MP4 smoke tests.
+          - CI validates unit tests, local-conversion planning, APK assembly, ABI-native runtime presence, and AAB packaging; it is not a substitute for physical-device link-based and local-file MP3/MP4 smoke tests.
           - Download only content you own or are authorized to download. No DRM bypass, cookie import, or private/paid-content access is provided.
           EOF
 
