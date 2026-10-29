@@ -2,6 +2,7 @@ package com.ridthewann.ubahvo.data
 
 import android.content.Context
 import android.os.Environment
+import android.net.Uri
 import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
 import com.yausername.youtubedl_android.YoutubeDL
@@ -20,6 +21,7 @@ data class YtDlpUpdateResult(
 class DownloadRepository(context: Context) {
     private val appContext = context.applicationContext
     private val publisher = OutputPublisher(appContext)
+    private val localMediaConverter = LocalMediaConverter(appContext, publisher)
 
     suspend fun updateYtDlp(): YtDlpUpdateResult = withContext(Dispatchers.IO) {
         StableYtDlpUpdater(appContext).update()
@@ -28,6 +30,14 @@ class DownloadRepository(context: Context) {
     suspend fun recentOutputs(limit: Int = 5): List<RecentOutput> = withContext(Dispatchers.IO) {
         publisher.recentOutputs(limit)
     }
+
+    suspend fun convertLocalFile(
+        uri: Uri,
+        displayName: String,
+        mode: OutputMode,
+        processId: String,
+        onProgress: (progress: Float, etaSeconds: Long, outputLine: String) -> Unit
+    ): PublishedOutput = localMediaConverter.convert(uri, displayName, mode, processId, onProgress)
 
     suspend fun download(
         url: String,
@@ -72,6 +82,7 @@ class DownloadRepository(context: Context) {
         runCatching {
             YoutubeDL.getInstance().destroyProcessById(processId)
         }
+        localMediaConverter.cancel(processId)
     }
 
     private fun buildRequest(
