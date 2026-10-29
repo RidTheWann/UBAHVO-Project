@@ -11,7 +11,7 @@
 - MP4 quality selection, progress reporting, cancellation, and Android share-sheet URL intake.
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
-- HTTPS YouTube URL validation and unit tests.
+- HTTPS media URL preflight and unit tests.
 - A small dependency-free Rust validation core, built as ABI-specific static libraries for `arm64-v8a` and `armeabi-v7a`, linked into a small C++17 JNI adapter. The established JVM parser remains as a fallback when the native library is unavailable or the input is non-ASCII.
 - Fast-path validation rejects oversized URLs and malformed or unsupported hosts before starting the downloader; this native parser is deliberately narrow and does not replace network/media processing.
 - Automatic background updates for the official stable yt-dlp script, plus a clear manual “Cek sekarang” action. The updater validates the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before installation, then verifies the staged and installed files and protects against rollback.
@@ -23,7 +23,7 @@ Visit the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Pro
 
 Download filename: `UBAHVO-0.1.0-beta.12-universal-debug.apk`.
 
-R8 code shrinking, resource shrinking, and Indonesian/English resource filtering are enabled. Unused Android UI test/debug tooling is excluded from the downloadable APK. A universal APK still includes both ARM variants and the bundled Python/FFmpeg runtimes, so its download size is inherently higher than a single-ABI package. Beta.10 measured 106,692,084 bytes; the native Rust/C++ integration may increase the size, so the beta.11 CI job measures the actual artifact instead of assuming that it meets the 100,000,000-byte target.
+R8 code shrinking, resource shrinking, and Indonesian/English resource filtering are enabled. Unused Android UI test/debug tooling is excluded from the downloadable APK. A universal APK still includes both ARM variants and the bundled Python/FFmpeg runtimes, so its download size is inherently higher than a single-ABI package. Beta.11 measured 106,990,064 bytes after the Rust/C++ bridge was added; beta.12 CI measures the current artifact rather than assuming that it meets the 100,000,000-byte target.
 
 The APK is built from the Android debug variant and is intended for early testing, not as a production-signed release. The signing key is generated on the GitHub runner, so later betas can require reinstalling.
 
