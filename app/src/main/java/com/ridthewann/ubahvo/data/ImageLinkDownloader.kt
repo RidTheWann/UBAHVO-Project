@@ -106,6 +106,14 @@ internal class ImageLinkDownloader(
             val published = publisher.publish(staged.file, staged.format.mimeType, staged.displayName) {
                 coroutineContext.ensureActive()
             }
+            try {
+                // Close the final cancellation race: the MediaStore row may have become visible
+                // just before this coroutine receives cancellation.
+                coroutineContext.ensureActive()
+            } catch (cancelled: CancellationException) {
+                publisher.discard(published.uri)
+                throw cancelled
+            }
             onProgress(100f, 0L, "IMAGE_STAGE:Gambar siap dibuka atau dibagikan.")
             published
         } catch (cancelled: CancellationException) {
