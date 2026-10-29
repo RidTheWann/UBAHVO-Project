@@ -10,10 +10,6 @@ import java.io.File
 import java.io.IOException
 
 class OutputPublisher(private val context: Context) {
-    private companion object {
-        const val COPY_BUFFER_SIZE = 64 * 1024
-    }
-
     fun publish(
         source: File,
         mimeType: String,
@@ -178,6 +174,7 @@ class OutputPublisher(private val context: Context) {
     }
 
     companion object {
+        private const val COPY_BUFFER_SIZE = 64 * 1024
         private const val DEFAULT_HISTORY_LIMIT = 5
         private const val MAX_HISTORY_LIMIT = 20
         private const val LEGACY_APPLICATION_ID = "com.ridthewann.youtubeconvert"
