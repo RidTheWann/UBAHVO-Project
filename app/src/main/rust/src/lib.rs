@@ -137,16 +137,17 @@ fn is_supported_single_youtube_url(host: &str, path: &str, query: Option<&str>) 
     let first_segment = segments.next();
     let second_segment = segments.next();
 
-    let video_id = if host == "youtu.be" {
-        first_segment
-    } else {
-        match first_segment {
-            Some("watch") => query.and_then(find_video_id_query_value).as_deref(),
-            Some("shorts" | "live" | "embed" | "v") => second_segment,
-            _ => None,
-        }
-    };
-    video_id.is_some_and(is_valid_video_id)
+    if host == "youtu.be" {
+        return first_segment.is_some_and(is_valid_video_id);
+    }
+
+    match first_segment {
+        Some("watch") => query
+            .and_then(find_video_id_query_value)
+            .is_some_and(|video_id| is_valid_video_id(&video_id)),
+        Some("shorts" | "live" | "embed" | "v") => second_segment.is_some_and(is_valid_video_id),
+        _ => false,
+    }
 }
 
 fn is_valid_video_id(value: &str) -> bool {
