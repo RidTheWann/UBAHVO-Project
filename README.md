@@ -15,6 +15,8 @@
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
 - HTTPS media URL preflight and unit tests.
+- An animated “Selamat Datang” launch screen followed by a startup loader while native media components initialize and eligible verified component updates are checked.
+- Background checks for published UBAHVO releases using Android's JobScheduler, with system notifications when permission is granted and an in-app update notice otherwise. APK installation is always confirmed by Android.
 - A small dependency-free Rust validation core, built as ABI-specific static libraries for `arm64-v8a`, `armeabi-v7a`, and `x86_64`, linked into a small C++17 JNI adapter. The established JVM parser remains as a fallback when the native library is unavailable or the input is non-ASCII.
 - Fast-path validation rejects oversized URLs and malformed or unsupported hosts before starting the downloader; this native parser is deliberately narrow and does not replace network/media processing.
 - Automatic background updates for the official stable yt-dlp script, plus a clear manual “Cek sekarang” action. The updater validates the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before installation, then verifies the staged and installed files and protects against rollback.
