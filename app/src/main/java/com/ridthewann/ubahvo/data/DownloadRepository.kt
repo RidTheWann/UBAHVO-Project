@@ -115,14 +115,11 @@ class DownloadRepository(context: Context) {
                     addOption("--audio-quality", "0")
                 }
                 OutputMode.MP4 -> {
-                    val height = quality.maxHeight
-                    val format = if (height == null) {
-                        "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
-                    } else {
-                        "bestvideo[ext=mp4][height<=$height]+bestaudio[ext=m4a]/" +
-                            "best[ext=mp4][height<=$height]/best[height<=$height]"
-                    }
-                    addOption("-f", format)
+                    addOption("-f", VideoFormatSelector.forQuality(quality))
+                    // DASH/HLS sources can expose video as many small fragments. Four concurrent
+                    // fragment requests improve throughput on high-bitrate 4K/8K sources without
+                    // requiring a separate downloader binary or changing the source's codec.
+                    addOption("--concurrent-fragments", "4")
                     addOption("--merge-output-format", "mp4")
                     addOption("--remux-video", "mp4")
                 }
