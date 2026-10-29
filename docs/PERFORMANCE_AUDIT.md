@@ -33,5 +33,5 @@ This is not evidence that the native parser makes the overall app measurably fas
 
 - Unit tests cover the new parser and scheduling policy.
 - CI checks the minified ZIP extra-field constructor used by Apache Commons Compress reflection, confirms both ARM ABIs and C++ runtimes exist, and reports the final APK byte count.
-- CI cannot prove end-to-end improvement in real YouTube extraction latency. Physical-device smoke testing should compare time from tapping **Simpan** to the first visible download progress, then test one authorized MP3 and one authorized MP4.
+- CI cannot prove end-to-end improvement in real-site media extraction latency. Physical-device smoke testing should compare time from tapping **Simpan** to the first visible download progress, then test one authorized MP3 and one authorized MP4.
 - The measured beta.10 universal APK is 106,692,084 bytes, so the 100 MB target is not met. Kotlin/R8/resource trimming removed 491,079 bytes from the prior release, but the dominant bundled Python and FFmpeg payloads are architecture-specific native archives. Reaching the target may require ABI-specific packages or a larger on-demand-runtime redesign; neither should be implemented blindly because both trade away the current one-universal-APK convenience and affect first-use behavior.
