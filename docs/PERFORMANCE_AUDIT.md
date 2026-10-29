@@ -35,3 +35,18 @@ This is not evidence that the native parser makes the overall app measurably fas
 - CI checks the minified ZIP extra-field constructor used by Apache Commons Compress reflection, confirms both ARM ABIs and C++ runtimes exist, and reports the final APK byte count.
 - CI cannot prove end-to-end improvement in real-site media extraction latency. Physical-device smoke testing should compare time from tapping **Simpan** to the first visible download progress, then test one authorized MP3 and one authorized MP4.
 - The measured beta.10 universal APK is 106,692,084 bytes, so the 100 MB target is not met. Kotlin/R8/resource trimming removed 491,079 bytes from the prior release, but the dominant bundled Python and FFmpeg payloads are architecture-specific native archives. Reaching the target may require ABI-specific packages or a larger on-demand-runtime redesign; neither should be implemented blindly because both trade away the current one-universal-APK convenience and affect first-use behavior.
+
+## Distribution follow-up (beta.13)
+
+The beta.11 universal APK was measured at 106,990,064 bytes. Beta.13 now builds three ABI variants (`arm64-v8a`, `armeabi-v7a`, and `x86_64`) and retains a universal APK. CI records the exact size of each split and warns when an individual package is at least 100,000,000 bytes. Do not record estimated size savings as a result until the beta.13 workflow produces its artifacts.
+
+Direct-download distribution offers two trade-offs:
+
+- A universal APK is easiest to explain and install, but contains the native runtime for every included ABI and therefore has the largest file size.
+- ABI-specific APKs contain only one architecture's native payload and should be smaller; users must choose a package compatible with their device. Android App Bundle distribution delegates ABI selection to Google Play, but a CI-produced unsigned AAB is only a build candidate, not a publishable production artifact.
+
+The beta.13 workflow also builds an optimized release AAB candidate to catch release-variant regressions early. Production distribution must use a permanent owner-controlled upload/signing key supplied through a protected CI secret or equivalent secure signing setup; never commit that key to the repository.
+
+The x86_64 Rust/C++ target improves build/test coverage on compatible Android emulators, but does not resolve the third-party FFmpeg 0.18.1 16 KB memory-page alignment issue. Keep the conservative conversion gate until the bundled media payload is corrected and validated on affected devices.
+
+An ABI packaging change is not a media-engine redesign. Local file conversion remains a separate future phase with file-picker/URI access, explicit input/output format planning, cancellation, partial-output cleanup, and format-by-format license and device compatibility validation.
