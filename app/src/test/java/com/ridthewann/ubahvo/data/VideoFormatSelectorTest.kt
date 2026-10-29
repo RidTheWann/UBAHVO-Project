@@ -12,7 +12,8 @@ class VideoFormatSelectorTest {
 
         assertTrue(format.contains("bestvideo[ext=mp4][height<=4320]"))
         assertTrue(format.contains("best[ext=mp4][height<=4320]"))
-        assertTrue(format.contains("bestvideo[height<=4320]+bestaudio"))
+        assertTrue(format.contains("bestvideo[height<=4320]+bestaudio[ext=m4a]"))
+        assertTrue(format.contains("bestvideo[height<=4320]+bestaudio/best[height<=4320]"))
         assertTrue(format.contains("best[height<=4320]"))
         assertFalse(format.contains("height<=2160"))
     }
