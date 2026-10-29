@@ -27,15 +27,68 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Rust and test native core
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+            sh /tmp/rustup-init.sh -y --profile minimal --component rustfmt
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          else
+            rustup toolchain install stable --profile minimal --component rustfmt
+            rustup default stable
+          fi
+          rustup target add aarch64-linux-android armv7-linux-androideabi
+          cargo fmt --manifest-path app/src/main/rust/Cargo.toml -- --check
+          cargo test --manifest-path app/src/main/rust/Cargo.toml --locked
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           packages: ""
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null
+
       - name: Install Android build and native runtime SDKs
+        shell: bash
         run: |
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
-          yes | sdkmanager --licenses >/dev/null
+          set -euo pipefail
+          NDK_VERSION="27.2.12479018"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$SDK_ROOT" ]]; then
+            echo "Android SDK root is not configured." >&2
+            exit 1
+          fi
+
+          NDK_ROOT="$SDK_ROOT/ndk/$NDK_VERSION"
+          ndk_is_ready() {
+            local host_root="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64"
+            [[ -x "$host_root/bin/clang" &&
+               -s "$host_root/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" &&
+               -s "$host_root/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" ]]
+          }
+
+          for attempt in 1 2 3; do
+            echo "Installing Android SDK packages (attempt $attempt/3)."
+            if sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;$NDK_VERSION" &&
+               ndk_is_ready; then
+              echo "Android SDK platform, Build Tools, and NDK are installed and verified."
+              exit 0
+            fi
+
+            echo "SDK/NDK installation attempt $attempt failed or left an incomplete NDK." >&2
+            # sdkmanager can leave a partial extraction and cached archive after a truncated download.
+            rm -rf "$NDK_ROOT" "$SDK_ROOT/.temp" "$HOME/.android/cache"
+            if [[ "$attempt" -lt 3 ]]; then
+              sleep "$((attempt * 10))"
+            fi
+          done
+
+          echo "Android NDK $NDK_VERSION could not be installed and verified after 3 attempts." >&2
+          exit 1
 
       - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
@@ -86,12 +139,44 @@ jobs:
             echo "Missing or empty universal APK: $SOURCE" >&2
             exit 1
           fi
+
+          APK_SIZE_BYTES="$(stat -c '%s' "$SOURCE")"
+          APK_SIZE_MB="$(awk -v size="$APK_SIZE_BYTES" 'BEGIN { printf "%.1f", size / 1000000 }')"
+          echo "Universal APK download size: $APK_SIZE_BYTES bytes (~$APK_SIZE_MB MB decimal)."
+          if (( APK_SIZE_BYTES >= 100000000 )); then
+            echo "::warning title=Universal APK size::The universal APK is $APK_SIZE_BYTES bytes, above the 100 MB download target."
+          fi
           for ABI in arm64-v8a armeabi-v7a; do
             if ! unzip -Z1 "$SOURCE" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
               echo "Universal APK is missing the C++ runtime for $ABI." >&2
               exit 1
             fi
+            if ! unzip -Z1 "$SOURCE" | grep -Fqx "lib/$ABI/libubahvo_native.so"; then
+              echo "Universal APK is missing the UBAHVO Rust/C++ native core for $ABI." >&2
+              exit 1
+            fi
           done
+
+          # Confirm R8 did not remove the public no-arg constructor used reflectively by
+          # Apache Commons Compress 1.12 when registering ZIP extra-field implementations.
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$SDK_ROOT" ]]; then
+            echo "Android SDK root is not configured for APK verification." >&2
+            exit 1
+          fi
+          APKANALYZER="$(find "$SDK_ROOT/cmdline-tools" -type f -name apkanalyzer -print -quit)"
+          if [[ -z "$APKANALYZER" || ! -x "$APKANALYZER" ]]; then
+            echo "apkanalyzer was not found in the installed Android SDK command-line tools." >&2
+            exit 1
+          fi
+          CLASS_DUMP="$(mktemp)"
+          trap 'rm -f "$CLASS_DUMP"' EXIT
+          "$APKANALYZER" dex code --class org.apache.commons.compress.archivers.zip.AsiExtraField "$SOURCE" > "$CLASS_DUMP"
+          if ! grep -Eq '^[[:space:]]*\.method[[:space:]]+public.*<init>\(\)V' "$CLASS_DUMP"; then
+            echo "Minified APK is missing AsiExtraField's public no-argument constructor." >&2
+            exit 1
+          fi
+          echo "Apache Commons Compress reflection constructor is present in the minified APK."
           cp "$SOURCE" "$DEST"
           (
             cd dist
@@ -102,17 +187,19 @@ jobs:
 
           **Pre-release beta — debug-signed, not a production-stable build.**
 
+          **Download size:** approximately ${APK_SIZE_MB} MB (${APK_SIZE_BYTES} bytes; decimal units).
+
           ## One APK for Android phones
           Download UBAHVO-${VERSION}-universal-debug.apk. It includes both 64-bit ARM (arm64-v8a) and 32-bit ARM (armeabi-v7a) native runtimes in one file. x86/x86_64 emulators and Intel Android devices are not included. R8 code/resource shrinking and compressed native-library packaging are enabled, but a universal APK is still larger than an APK containing only one ABI.
 
           ## What's included
           - Kotlin + Jetpack Compose interface with plain-language labels.
           - MP4 video or MP3 audio from supported single-video YouTube URLs.
-          - Progress, cancellation, recent output history, open/share actions, and a user-triggered yt-dlp updater with SHA-256 verification.
+          - Progress, cancellation, recent output history, open/share actions, automatic background yt-dlp support updates, and a manual “Cek sekarang” action. Updates require HTTPS, approved GitHub hosts, and SHA-256 verification.
           - New output files are saved in Download/UBAHVO. Legacy files in Download/YoutubeConvert remain where they are; the app attempts to include them in recent history.
 
           ## Important compatibility notes
-          - New application ID: com.ridthewann.ubahvo. Android treats this as a separate app from older builds with ID com.ridthewann.youtubeconvert; this beta does not update the older installation in place. Test beta.8 before removing the old app, and back up important files first.
+          - New application ID: com.ridthewann.ubahvo. Android treats this as a separate app from older builds with ID com.ridthewann.youtubeconvert; this app installs alongside the older installation. Keep both until you have verified UBAHVO and backed up important files; uninstalling an app does not move its existing output files.
           - The current FFmpeg 0.18.1 dependency has a reported 16 KB page-size alignment problem (https://github.com/yausername/youtubedl-android/issues/365). UBAHVO conservatively disables conversion when the device page size is not verified as 4 KB, so this beta cannot convert on every 16 KB-page phone yet.
           - These APKs are built from the Android debug variant and signed with the CI runner's debug key. Later beta builds can require reinstalling.
           - CI validates unit tests, APK assembly, and native runtime presence; it is not a substitute for physical-device MP3/MP4 smoke tests.

@@ -1,5 +1,6 @@
 package com.ridthewann.ubahvo.ui
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -8,6 +9,8 @@ import com.ridthewann.ubahvo.UbahvoApplication
 import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
 import com.ridthewann.ubahvo.data.DownloadRepository
+import com.ridthewann.ubahvo.data.DownloadOutputParser
+import com.ridthewann.ubahvo.data.YtDlpAutoUpdatePolicy
 import com.ridthewann.ubahvo.data.RecentOutput
 import com.ridthewann.ubahvo.data.YouTubeUrlValidator
 import kotlinx.coroutines.CancellationException
@@ -36,6 +39,7 @@ data class ConverterUiState(
     val lastLogLine: String? = null,
     val engineReady: Boolean = false,
     val isUpdatingYtDlp: Boolean = false,
+    val isAutoUpdatingYtDlp: Boolean = false,
     val ytdlpVersion: String? = null,
     val ytdlpUpdateMessage: String? = null,
     val recentOutputs: List<RecentOutput> = emptyList(),
@@ -64,6 +68,11 @@ class ConverterViewModel(
     private var activeJob: Job? = null
     private var historyRefreshJob: Job? = null
     private var refreshHistoryAgain = false
+    private var autoUpdateJob: Job? = null
+
+    init {
+        autoUpdateYtDlpIfDue()
+    }
 
     /**
      * Load recent app-owned MediaStore outputs. If a refresh is requested while one is running,
@@ -134,9 +143,77 @@ class ConverterViewModel(
         _uiState.update { it.copy(rightsConfirmed = confirmed) }
     }
 
+    /**
+     * Keep supported video links current automatically without making app launch or the Save
+     * action wait for a network request. Successful checks run daily; failures retry after six
+     * hours. The updater installs verified bytes atomically, so an active download keeps using a
+     * complete script even if the next version is installed in the background.
+     */
+    private fun autoUpdateYtDlpIfDue() {
+        if (!application.engineReady || autoUpdateJob?.isActive == true) return
+
+        val preferences = application.getSharedPreferences(AUTO_UPDATE_PREFERENCES, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val nextCheckAt = preferences.getLong(KEY_NEXT_AUTO_UPDATE_AT, 0L)
+        if (!YtDlpAutoUpdatePolicy.isDue(now, nextCheckAt)) {
+            if (_uiState.value.ytdlpUpdateMessage == null) {
+                _uiState.update {
+                    it.copy(ytdlpUpdateMessage = "Dukungan video diperiksa otomatis. Tidak perlu memperbaruinya setiap kali.")
+                }
+            }
+            return
+        }
+
+        autoUpdateJob = viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isAutoUpdatingYtDlp = true,
+                    ytdlpUpdateMessage = "Memeriksa dukungan video otomatis di latar belakang…"
+                )
+            }
+            var succeeded = false
+            try {
+                val result = repository.updateYtDlp()
+                succeeded = true
+                val version = result.versionName?.takeIf { it.isNotBlank() }
+                    ?: result.version?.takeIf { it.isNotBlank() }
+                    ?: "versi stabil terbaru"
+
+                _uiState.update {
+                    it.copy(
+                        ytdlpVersion = version,
+                        ytdlpUpdateMessage = if (result.updated) {
+                            "Dukungan video otomatis diperbarui ke $version."
+                        } else {
+                            "Dukungan video sudah terbaru ($version)."
+                        }
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                android.util.Log.w("UBAHVO", "Automatic yt-dlp support update failed", error)
+                _uiState.update {
+                    it.copy(
+                        ytdlpUpdateMessage = "Pemeriksaan otomatis belum berhasil. Dukungan saat ini tetap bisa dicoba; ketuk Perbarui dukungan video jika tautan gagal."
+                    )
+                }
+            } finally {
+                preferences.edit()
+                    .putLong(
+                        KEY_NEXT_AUTO_UPDATE_AT,
+                        YtDlpAutoUpdatePolicy.nextCheckAt(System.currentTimeMillis(), succeeded)
+                    )
+                    .apply()
+                _uiState.update { it.copy(isAutoUpdatingYtDlp = false) }
+                autoUpdateJob = null
+            }
+        }
+    }
+
     fun updateYtDlp() {
         val snapshot = _uiState.value
-        if (snapshot.isBusy || snapshot.isUpdatingYtDlp) return
+        if (snapshot.isBusy || snapshot.isUpdatingYtDlp || snapshot.isAutoUpdatingYtDlp) return
 
         if (!application.engineReady) {
             _uiState.update {
@@ -152,13 +229,15 @@ class ConverterViewModel(
             _uiState.update {
                 it.copy(
                     isUpdatingYtDlp = true,
-                    ytdlpUpdateMessage = "Memeriksa pembaruan…",
+                    ytdlpUpdateMessage = "Memeriksa dukungan video…",
                     errorMessage = null
                 )
             }
+            var succeeded = false
 
             try {
                 val result = repository.updateYtDlp()
+                succeeded = true
                 val version = result.versionName?.takeIf { it.isNotBlank() }
                     ?: result.version?.takeIf { it.isNotBlank() }
                     ?: "versi stabil terbaru"
@@ -167,9 +246,9 @@ class ConverterViewModel(
                     it.copy(
                         ytdlpVersion = version,
                         ytdlpUpdateMessage = if (result.updated) {
-                            "Dukungan tautan berhasil diperbarui ke $version."
+                            "Dukungan video berhasil diperbarui ke $version."
                         } else {
-                            "Dukungan tautan sudah menggunakan versi terbaru ($version)."
+                            "Dukungan video sudah terbaru ($version)."
                         }
                     )
                 }
@@ -183,6 +262,13 @@ class ConverterViewModel(
                     )
                 }
             } finally {
+                application.getSharedPreferences(AUTO_UPDATE_PREFERENCES, Context.MODE_PRIVATE)
+                    .edit()
+                    .putLong(
+                        KEY_NEXT_AUTO_UPDATE_AT,
+                        YtDlpAutoUpdatePolicy.nextCheckAt(System.currentTimeMillis(), succeeded)
+                    )
+                    .apply()
                 _uiState.update { it.copy(isUpdatingYtDlp = false) }
             }
         }
@@ -225,7 +311,7 @@ class ConverterViewModel(
                     isBusy = true,
                     progress = 0f,
                     etaSeconds = 0L,
-                    stageMessage = "Memeriksa tautan…",
+                    stageMessage = "Menghubungkan ke video dan memilih kualitas…",
                     videoTitle = null,
                     errorMessage = null,
                     outputUri = null,
@@ -235,31 +321,51 @@ class ConverterViewModel(
             }
 
             try {
-                val info = repository.getInfo(normalizedUrl)
-                _uiState.update {
-                    it.copy(
-                        videoTitle = info.title ?: info.fulltitle ?: "Video YouTube",
-                        stageMessage = "Memulai konversi…"
-                    )
-                }
-
+                // Download directly: asking yt-dlp for metadata first runs a second extraction
+                // for the same URL and noticeably delays the first visible download progress.
+                var lastUiProgress = -1f
+                var lastUiEta = 0L
                 val result = repository.download(
                     url = normalizedUrl,
                     mode = snapshot.mode,
                     quality = snapshot.quality,
                     processId = processId
                 ) { progress, eta, line ->
-                    _uiState.update {
-                        it.copy(
-                            progress = progress,
-                            etaSeconds = eta,
-                            stageMessage = if (snapshot.mode == OutputMode.MP3) {
-                                "Mengambil audio dan menyiapkan MP3…"
-                            } else {
-                                "Mengunduh dan menyiapkan MP4…"
-                            },
-                            lastLogLine = line.take(180)
-                        )
+                    val parsedTitle = DownloadOutputParser.videoTitleFromLine(line)
+                    val progressChanged = lastUiProgress < 0f ||
+                        kotlin.math.abs(progress - lastUiProgress) >= 0.5f ||
+                        progress >= 100f
+                    val etaChanged = eta > 0L && eta != lastUiEta
+                    val importantLine = parsedTitle != null ||
+                        line.startsWith("[download] Destination:") ||
+                        line.startsWith("[Merger]") ||
+                        line.contains("ERROR", ignoreCase = true)
+
+                    // StreamProcessExtractor may emit several diagnostic lines between progress
+                    // ticks. Avoid recomposing the full screen for every unchanged progress value.
+                    if (parsedTitle != null || progressChanged || etaChanged || importantLine) {
+                        if (progressChanged) lastUiProgress = progress
+                        if (etaChanged) lastUiEta = eta
+                        _uiState.update { current ->
+                            current.copy(
+                                progress = progress,
+                                etaSeconds = eta,
+                                videoTitle = parsedTitle ?: current.videoTitle,
+                                stageMessage = when {
+                                    parsedTitle != null && snapshot.mode == OutputMode.MP3 ->
+                                        "Tautan terdeteksi — menyiapkan audio…"
+                                    parsedTitle != null ->
+                                        "Tautan terdeteksi — menyiapkan video…"
+                                    current.videoTitle == null ->
+                                        "Memeriksa tautan dan memilih kualitas…"
+                                    snapshot.mode == OutputMode.MP3 ->
+                                        "Mengambil audio dan menyiapkan MP3…"
+                                    else ->
+                                        "Mengunduh dan menyiapkan MP4…"
+                                },
+                                lastLogLine = if (parsedTitle != null) null else line.take(180)
+                            )
+                        }
                     }
                 }
 
@@ -334,7 +440,14 @@ class ConverterViewModel(
 
     override fun onCleared() {
         cancel()
+        autoUpdateJob?.cancel()
+        autoUpdateJob = null
         super.onCleared()
+    }
+
+    companion object {
+        private const val AUTO_UPDATE_PREFERENCES = "automatic_ytdlp_support_updates"
+        private const val KEY_NEXT_AUTO_UPDATE_AT = "next_check_at_ms"
     }
 }
 

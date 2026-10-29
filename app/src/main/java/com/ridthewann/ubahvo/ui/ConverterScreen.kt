@@ -100,23 +100,24 @@ fun ConverterScreen(
                             verticalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
                             Text(
-                                "Dukungan tautan video",
+                                "Dukungan video otomatis",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                state.ytdlpVersion?.let { "Versi saat ini: $it" }
-                                    ?: "Jika tautan tidak dapat diproses, coba perbarui dukungan.",
+                                state.ytdlpVersion?.let { "Pembaruan otomatis aktif · versi $it" }
+                                    ?: "UBAHVO memeriksa pembaruan di latar belakang. Tidak perlu mengatur apa pun.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         OutlinedButton(
                             onClick = viewModel::updateYtDlp,
-                            enabled = state.engineReady && !state.isBusy && !state.isUpdatingYtDlp,
+                            enabled = state.engineReady && !state.isBusy &&
+                                !state.isUpdatingYtDlp && !state.isAutoUpdatingYtDlp,
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            if (state.isUpdatingYtDlp) {
+                            if (state.isUpdatingYtDlp || state.isAutoUpdatingYtDlp) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp
@@ -128,7 +129,13 @@ fun ConverterScreen(
                                 )
                             }
                             Spacer(Modifier.width(7.dp))
-                            Text(if (state.isUpdatingYtDlp) "Memeriksa…" else "Perbarui")
+                            Text(
+                                when {
+                                    state.isAutoUpdatingYtDlp -> "Otomatis…"
+                                    state.isUpdatingYtDlp -> "Memeriksa…"
+                                    else -> "Cek sekarang"
+                                }
+                            )
                         }
                     }
 
@@ -137,7 +144,10 @@ fun ConverterScreen(
                         Text(
                             updateMessage,
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (updateMessage.startsWith("Pembaruan gagal")) {
+                            color = if (
+                                updateMessage.contains("gagal", ignoreCase = true) ||
+                                updateMessage.contains("belum berhasil", ignoreCase = true)
+                            ) {
                                 MaterialTheme.colorScheme.error
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant

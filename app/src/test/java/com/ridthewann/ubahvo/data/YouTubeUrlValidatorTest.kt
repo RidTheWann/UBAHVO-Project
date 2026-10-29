@@ -58,4 +58,15 @@ class YouTubeUrlValidatorTest {
     fun rejectsInvalidVideoId() {
         assertNull(YouTubeUrlValidator.normalize("https://www.youtube.com/watch?v=short"))
     }
+
+    @Test
+    fun rejectsMultipleTrailingHostDots() {
+        assertNull(YouTubeUrlValidator.normalize("https://youtube.com../watch?v=abcdefghijk"))
+    }
+
+    @Test
+    fun rejectsOversizedUrlBeforeParsing() {
+        val url = "https://www.youtube.com/watch?v=abcdefghijk&x=" + "a".repeat(5000)
+        assertNull(YouTubeUrlValidator.normalize(url))
+    }
 }

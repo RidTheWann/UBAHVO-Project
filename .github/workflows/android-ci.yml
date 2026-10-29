@@ -27,15 +27,68 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Rust and test native core
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+            sh /tmp/rustup-init.sh -y --profile minimal --component rustfmt
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          else
+            rustup toolchain install stable --profile minimal --component rustfmt
+            rustup default stable
+          fi
+          rustup target add aarch64-linux-android armv7-linux-androideabi
+          cargo fmt --manifest-path app/src/main/rust/Cargo.toml -- --check
+          cargo test --manifest-path app/src/main/rust/Cargo.toml --locked
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           packages: ""
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null
+
       - name: Install Android build and native runtime SDKs
+        shell: bash
         run: |
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
-          yes | sdkmanager --licenses >/dev/null
+          set -euo pipefail
+          NDK_VERSION="27.2.12479018"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$SDK_ROOT" ]]; then
+            echo "Android SDK root is not configured." >&2
+            exit 1
+          fi
+
+          NDK_ROOT="$SDK_ROOT/ndk/$NDK_VERSION"
+          ndk_is_ready() {
+            local host_root="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64"
+            [[ -x "$host_root/bin/clang" &&
+               -s "$host_root/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" &&
+               -s "$host_root/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" ]]
+          }
+
+          for attempt in 1 2 3; do
+            echo "Installing Android SDK packages (attempt $attempt/3)."
+            if sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;$NDK_VERSION" &&
+               ndk_is_ready; then
+              echo "Android SDK platform, Build Tools, and NDK are installed and verified."
+              exit 0
+            fi
+
+            echo "SDK/NDK installation attempt $attempt failed or left an incomplete NDK." >&2
+            # sdkmanager can leave a partial extraction and cached archive after a truncated download.
+            rm -rf "$NDK_ROOT" "$SDK_ROOT/.temp" "$HOME/.android/cache"
+            if [[ "$attempt" -lt 3 ]]; then
+              sleep "$((attempt * 10))"
+            fi
+          done
+
+          echo "Android NDK $NDK_VERSION could not be installed and verified after 3 attempts." >&2
+          exit 1
 
       - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
@@ -60,9 +113,25 @@ jobs:
             echo "Missing or empty universal APK: $APK" >&2
             exit 1
           fi
+
+          APK_SIZE_BYTES="$(stat -c '%s' "$APK")"
+          echo "Universal APK size: $APK_SIZE_BYTES bytes (target: less than 100,000,000 bytes)."
+          {
+            echo "### Universal APK size"
+            printf -- '- File: `%s`\n' "$APK"
+            echo "- Size: $APK_SIZE_BYTES bytes"
+            echo "- Target: under 100,000,000 bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if (( APK_SIZE_BYTES >= 100000000 )); then
+            echo "::warning title=Universal APK size::The universal APK is $APK_SIZE_BYTES bytes, above the 100 MB download target."
+          fi
           for ABI in arm64-v8a armeabi-v7a; do
             if ! unzip -Z1 "$APK" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
               echo "Universal APK is missing the C++ runtime for $ABI." >&2
+              exit 1
+            fi
+            if ! unzip -Z1 "$APK" | grep -Fqx "lib/$ABI/libubahvo_native.so"; then
+              echo "Universal APK is missing the UBAHVO Rust/C++ native core for $ABI." >&2
               exit 1
             fi
             if ! unzip -Z1 "$APK" | grep -Eq "^lib/$ABI/[^/]+\\.so$"; then
@@ -70,6 +139,27 @@ jobs:
               exit 1
             fi
           done
+
+          # Verify the minified APK kept the reflective no-argument constructor that
+          # Apache Commons Compress 1.12 uses to register AsiExtraField at class init.
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$SDK_ROOT" ]]; then
+            echo "Android SDK root is not configured for APK verification." >&2
+            exit 1
+          fi
+          APKANALYZER="$(find "$SDK_ROOT/cmdline-tools" -type f -name apkanalyzer -print -quit)"
+          if [[ -z "$APKANALYZER" || ! -x "$APKANALYZER" ]]; then
+            echo "apkanalyzer was not found in the installed Android SDK command-line tools." >&2
+            exit 1
+          fi
+          CLASS_DUMP="$(mktemp)"
+          trap 'rm -f "$CLASS_DUMP"' EXIT
+          "$APKANALYZER" dex code --class org.apache.commons.compress.archivers.zip.AsiExtraField "$APK" > "$CLASS_DUMP"
+          if ! grep -Eq '^[[:space:]]*\.method[[:space:]]+public.*<init>\(\)V' "$CLASS_DUMP"; then
+            echo "Minified APK is missing AsiExtraField's public no-argument constructor." >&2
+            exit 1
+          fi
+          echo "Apache Commons Compress reflection constructor is present in the minified APK."
 
       - name: Upload UBAHVO universal APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

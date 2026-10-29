@@ -1,6 +1,33 @@
 # Changelog
 
+## 0.1.0-beta.11
+
+- Add an optional Rust-based YouTube URL preflight, compiled for both supported ARM ABIs and linked through a minimal C++ JNI adapter.
+- Preserve JVM URL validation as a fallback if the native library is unavailable or the input contains non-ASCII characters.
+- Add Rust formatting/unit-test gates and native-library checks to Android CI and beta-release builds.
+- Avoid reinitializing yt-dlp/FFmpeg for every Save tap; the app initializes them once per process, and Android process recreation repeats startup initialization as needed.
+- Keep the existing beta.10 download-path improvements, yt-dlp cache, automatic stable updater, and minified-APK reflection safeguards.
+- The native module has not yet demonstrated an end-to-end speedup; CI measures the final universal APK size, and physical-device smoke testing remains required before claiming release readiness.
 All notable user-facing changes to UBAHVO are documented here.
+
+
+## 0.1.0-beta.10 — 2026-10-27
+
+- Removed the separate metadata-only yt-dlp invocation before downloads; the title now comes from the active download process, reducing duplicated link extraction and time-to-first-progress.
+- Enabled yt-dlp's persistent cache in the app cache directory and made progress UI updates less frequent.
+- Added automatic yt-dlp support checks when the app opens if the scheduled check is due: daily after success and no sooner than six hours after a failure. The Save action remains available during automatic checks.
+- Restricted bundled resource locales to Indonesian and English and removed unused Android UI test/debug tooling dependencies to reduce the universal APK footprint.
+- Fixed the CI DEX check to recognize the public reflective constructor after minification.
+- Added regression tests for download-title parsing and automatic update scheduling.
+
+## 0.1.0-beta.9 — 2026-10-26
+
+- Added R8 keep rules for the yt-dlp/FFmpeg wrappers and Apache Commons Compress classes instantiated through reflection by `ExtraFieldUtils`.
+- Hardened startup so JVM native-linkage or media-engine initialization failures disable conversion without immediately closing the app.
+- Added regression tests for unsupported memory page sizes and media-engine startup failures.
+- Displayed the last initialization stage in the disabled-engine message, making device-specific startup diagnosis more precise.
+- Bumped Android versionCode to 9; physical-device smoke testing is still required.
+
 
 ## 0.1.0-beta.8 — 2026-10-26
 

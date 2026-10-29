@@ -4,10 +4,8 @@ import android.content.Context
 import android.os.Environment
 import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
-import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.youtubedl_android.mapper.VideoInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -22,14 +20,6 @@ data class YtDlpUpdateResult(
 class DownloadRepository(context: Context) {
     private val appContext = context.applicationContext
     private val publisher = OutputPublisher(appContext)
-
-    suspend fun getInfo(url: String): VideoInfo = withContext(Dispatchers.IO) {
-        val request = YoutubeDLRequest(url).apply {
-            addOption("--no-playlist")
-            addOption("--no-warnings")
-        }
-        YoutubeDL.getInstance().getInfo(request)
-    }
 
     suspend fun updateYtDlp(): YtDlpUpdateResult = withContext(Dispatchers.IO) {
         StableYtDlpUpdater(appContext).update()
@@ -54,10 +44,9 @@ class DownloadRepository(context: Context) {
         }
 
         try {
-            // Re-init is idempotent and protects callers if Android recreates the process.
-            YoutubeDL.getInstance().init(appContext)
-            FFmpeg.getInstance().init(appContext)
-
+            // UbahvoApplication initializes both engines once per Android process and gates
+            // this path with engineReady. Re-initializing both native runtimes here repeats work
+            // for each Save tap; process recreation runs Application.onCreate again automatically.
             val request = buildRequest(url, mode, quality, outputDirectory)
             val callback: (Float, Long, String) -> Unit = { progress, eta, line ->
                 onProgress(progress.coerceIn(0f, 100f), eta.coerceAtLeast(0L), line)
@@ -95,7 +84,15 @@ class DownloadRepository(context: Context) {
         return YoutubeDLRequest(url).apply {
             addOption("--no-playlist")
             addOption("--no-warnings")
+            addOption("--no-colors")
             addOption("--newline")
+            // Print the title during this same extraction, avoiding a separate --dump-json run.
+            addOption("--print", "before_dl:UBAHVO_TITLE:%(title)s")
+            // Explicit progress keeps the transfer indicator visible even though --print implies quiet.
+            addOption("--progress")
+            // The upstream wrapper disables yt-dlp's cache unless --cache-dir is explicit.
+            // Retain its small extractor/player-function cache between conversion attempts.
+            addOption("--cache-dir", File(appContext.cacheDir, "yt-dlp-cache").absolutePath)
             addOption("--no-mtime")
             addOption("--no-part")
             addOption("-o", template)
