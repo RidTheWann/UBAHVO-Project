@@ -13,7 +13,9 @@ pub fn normalize_media_url(input: &str) -> Option<&str> {
     let value = input.trim();
     if value.is_empty()
         || value.len() > MAX_URL_BYTES
-        || value.chars().any(|ch| ch.is_whitespace() || ch.is_control())
+        || value
+            .chars()
+            .any(|ch| ch.is_whitespace() || ch.is_control())
         || !has_valid_percent_escapes(value)
     {
         return None;
@@ -105,7 +107,9 @@ fn is_public_dns_host(host: &str) -> bool {
     }
 
     // DNS names only: reject IPv4 decimal and common hexadecimal integer spellings.
-    let all_decimal = labels.iter().all(|label| label.bytes().all(|b| b.is_ascii_digit()));
+    let all_decimal = labels
+        .iter()
+        .all(|label| label.bytes().all(|b| b.is_ascii_digit()));
     let all_numeric_or_hex = labels
         .iter()
         .all(|label| is_decimal_label(label) || is_hex_label(label));
@@ -313,7 +317,10 @@ mod tests {
         ];
 
         for url in urls {
-            assert!(normalize_media_url(url).is_none(), "URL should be rejected: {url}");
+            assert!(
+                normalize_media_url(url).is_none(),
+                "URL should be rejected: {url}"
+            );
         }
     }
 
