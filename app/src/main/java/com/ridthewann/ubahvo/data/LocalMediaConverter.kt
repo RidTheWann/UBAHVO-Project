@@ -35,13 +35,15 @@ internal class LocalMediaConverter(
         mode: OutputMode,
         processId: String,
         onProgress: (progress: Float, etaSeconds: Long, outputLine: String) -> Unit
-    ): PublishedOutput = withContext(Dispatchers.IO) {
+    ): PublishedOutput {
+        var publishedOutput: PublishedOutput? = null
+        try {
+            return withContext(Dispatchers.IO) {
         val workDirectory = File(File(context.cacheDir, WORK_DIRECTORY), processId)
         if (!workDirectory.mkdirs() && !workDirectory.isDirectory) {
             throw LocalMediaConversionException("Ruang kerja sementara tidak dapat disiapkan.")
         }
         val coroutineContext = currentCoroutineContext()
-        var publishedOutput: PublishedOutput? = null
 
         try {
             val inputSize = querySize(uri)
@@ -165,14 +167,17 @@ internal class LocalMediaConverter(
                 coroutineContext.ensureActive()
             }
             publishedOutput = published
-            // Catch cancellation after the synchronous MediaStore copy has returned as well.
             coroutineContext.ensureActive()
             published
-        } catch (cancelled: CancellationException) {
-            publishedOutput?.let { publisher.discard(it.uri) }
-            throw cancelled
         } finally {
             workDirectory.deleteRecursively()
+        }
+            }
+        } catch (cancelled: CancellationException) {
+            // This outer catch also sees cancellation delivered while withContext is returning
+            // to the caller, after MediaStore publication already completed.
+            publishedOutput?.let { publisher.discard(it.uri) }
+            throw cancelled
         }
     }
 
