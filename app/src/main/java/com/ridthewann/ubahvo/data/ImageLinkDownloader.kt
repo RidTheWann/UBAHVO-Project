@@ -190,7 +190,8 @@ internal class ImageLinkDownloader(
         coroutineContext: kotlin.coroutines.CoroutineContext,
         onProgress: (Float, Long, String) -> Unit
     ): StagedImage {
-        input.use { stream ->
+        try {
+            input.use { stream ->
             val format = ImageSignatureDetector.detect(prefix)
                 ?: throw ImageLinkException(
                     "Tautan ini bukan gambar raster yang didukung. SVG dan file non-gambar tidak disimpan sebagai wallpaper."
@@ -244,9 +245,11 @@ internal class ImageLinkDownloader(
             } catch (error: Exception) {
                 file.delete()
                 throw error
-            } finally {
-                disconnect(response.connection)
             }
+            }
+        } finally {
+            // Disconnect even when signature, content-length, or disk-space checks fail before the copy starts.
+            disconnect(response.connection)
         }
     }
 
