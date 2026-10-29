@@ -18,15 +18,15 @@ android {
         applicationId = "com.ridthewann.ubahvo"
         minSdk = 29
         targetSdk = 36
-        versionCode = 12
-        versionName = "0.1.0-beta.12"
+        versionCode = 13
+        versionName = "0.1.0-beta.13"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Keep only the locales used by the current Indonesian UI and English fallback.
         resourceConfigurations += setOf("en", "id")
-        // One direct-download APK supports 64-bit and 32-bit ARM Android phones.
-        // x86/x86_64 are omitted to keep the universal APK smaller.
+        // Keep direct-download support for ARM phones and add x86_64 for Android emulators/Intel devices.
+        // ABI-specific outputs keep native downloads smaller; the universal APK remains available.
         ndk {
-            abiFilters += setOf("arm64-v8a", "armeabi-v7a")
+            abiFilters += setOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
         externalNativeBuild {
             cmake {
@@ -34,6 +34,18 @@ android {
                     "-DUBAHVO_RUST_LIBRARY_ROOT=${generatedRustLibraryRoot.get().asFile.absolutePath}"
                 )
             }
+        }
+    }
+
+    // Produce small per-ABI APKs and retain one universal APK for users who prefer one download.
+    splits {
+        abi {
+            // AGP cannot shrink split APK resources and bundle an AAB in the same variant task graph.
+            // CI uses -Pubahvo.bundleOnly=true for its separate App Bundle build invocation.
+            isEnable = !providers.gradleProperty("ubahvo.bundleOnly").isPresent
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
         }
     }
 
@@ -46,8 +58,14 @@ android {
 
     buildTypes {
         getByName("debug") {
-            // Shrink Kotlin/Java code and unused Android resources in the downloadable beta APK.
-            // Native media runtimes remain the main size cost of a universal APK.
+            // Shrink Kotlin/Java code and unused Android resources in downloadable beta APKs.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        getByName("release") {
+            // Prepare an optimized App Bundle candidate. CI intentionally leaves it unsigned
+            // unless a dedicated release-signing configuration is supplied outside the repo.
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -88,7 +106,7 @@ android {
 
 val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
     group = "build setup"
-    description = "Stages ARM-only libc++ runtimes from the pinned Android NDK into generated JNI libraries."
+    description = "Stages ABI-matched libc++ runtimes from the pinned Android NDK into generated JNI libraries."
     outputs.dir(generatedCppRuntimeDir)
     outputs.upToDateWhen { false }
 
@@ -115,7 +133,8 @@ val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
         )
         val abiTriples = linkedMapOf(
             "arm64-v8a" to "aarch64-linux-android",
-            "armeabi-v7a" to "arm-linux-androideabi"
+            "armeabi-v7a" to "arm-linux-androideabi",
+            "x86_64" to "x86_64-linux-android"
         )
         val generatedRoot = generatedCppRuntimeDir.get().asFile
         generatedRoot.deleteRecursively()
@@ -139,7 +158,7 @@ val prepareNdkCppRuntime = tasks.register("prepareNdkCppRuntime") {
 
 val prepareRustNativeCore = tasks.register("prepareRustNativeCore") {
     group = "build setup"
-    description = "Cross-compiles the Rust URL preflight core for both ARM ABIs."
+    description = "Cross-compiles the Rust URL preflight core for ARM phones and x86_64 emulators."
     inputs.files(fileTree("src/main/rust"))
     outputs.dir(generatedRustLibraryRoot)
     outputs.dir(rustTargetBuildDir)
@@ -166,7 +185,8 @@ val prepareRustNativeCore = tasks.register("prepareRustNativeCore") {
         data class RustTarget(val abi: String, val triple: String, val linker: String)
         val targets = listOf(
             RustTarget("arm64-v8a", "aarch64-linux-android", "aarch64-linux-android29-clang"),
-            RustTarget("armeabi-v7a", "armv7-linux-androideabi", "armv7a-linux-androideabi29-clang")
+            RustTarget("armeabi-v7a", "armv7-linux-androideabi", "armv7a-linux-androideabi29-clang"),
+            RustTarget("x86_64", "x86_64-linux-android", "x86_64-linux-android29-clang")
         )
         val rustManifest = file("src/main/rust/Cargo.toml")
         val cargoExecutable = System.getenv("CARGO") ?: if (isWindows) "cargo.exe" else "cargo"
@@ -228,8 +248,7 @@ tasks.named("preBuild").configure {
     dependsOn(prepareNdkCppRuntime, prepareRustNativeCore)
 }
 
-// Android Gradle Plugin's default APK names expose the generic "app" module name.
-// Rename the single universal ARM debug APK to the public product name after every assembleDebug.
+// Give both the one-file universal APK and each lean ABI-specific APK stable product names.
 val renameUbahvoDebugApks = tasks.register("renameUbahvoDebugApks") {
     group = "build"
     description = "Renames the single universal ARM debug APK to the UBAHVO product name."
@@ -239,17 +258,25 @@ val renameUbahvoDebugApks = tasks.register("renameUbahvoDebugApks") {
         val appVersion = android.defaultConfig.versionName
             ?: throw GradleException("Could not read the UBAHVO versionName.")
 
-        val source = File(apkDirectory, "app-debug.apk")
-        val destination = File(apkDirectory, "UBAHVO-" + appVersion + "-universal-debug.apk")
+        val apkNames = linkedMapOf(
+            "universal" to "app-universal-debug.apk",
+            "arm64-v8a" to "app-arm64-v8a-debug.apk",
+            "armeabi-v7a" to "app-armeabi-v7a-debug.apk",
+            "x86_64" to "app-x86_64-debug.apk"
+        )
 
-        if (!source.isFile || source.length() <= 0L) {
-            throw GradleException("Missing or empty universal APK before branding rename: " + source.absolutePath)
-        }
-        if (destination.exists() && !destination.delete()) {
-            throw GradleException("Could not replace previous universal APK: " + destination.absolutePath)
-        }
-        if (!source.renameTo(destination)) {
-            throw GradleException("Could not rename APK to UBAHVO universal filename: " + destination.absolutePath)
+        apkNames.forEach { (label, sourceName) ->
+            val source = File(apkDirectory, sourceName)
+            val destination = File(apkDirectory, "UBAHVO-" + appVersion + "-" + label + "-debug.apk")
+            if (!source.isFile || source.length() <= 0L) {
+                throw GradleException("Missing or empty " + label + " APK before branding rename: " + source.absolutePath)
+            }
+            if (destination.exists() && !destination.delete()) {
+                throw GradleException("Could not replace previous UBAHVO APK: " + destination.absolutePath)
+            }
+            if (!source.renameTo(destination)) {
+                throw GradleException("Could not rename APK to UBAHVO filename: " + destination.absolutePath)
+            }
         }
     }
 }

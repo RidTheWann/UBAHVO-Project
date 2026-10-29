@@ -40,7 +40,7 @@ jobs:
             rustup toolchain install stable --profile minimal --component rustfmt
             rustup default stable
           fi
-          rustup target add aarch64-linux-android armv7-linux-androideabi
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
           cargo fmt --manifest-path app/src/main/rust/Cargo.toml -- --check
           cargo test --manifest-path app/src/main/rust/Cargo.toml --locked
 
@@ -68,7 +68,8 @@ jobs:
             local host_root="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64"
             [[ -x "$host_root/bin/clang" &&
                -s "$host_root/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" &&
-               -s "$host_root/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" ]]
+               -s "$host_root/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" &&
+               -s "$host_root/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so" ]]
           }
 
           for attempt in 1 2 3; do
@@ -121,9 +122,13 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run tests and build one universal ARM beta APK
+      - name: Run Android tests and build ABI APKs
         if: steps.existing.outputs.exists != 'true'
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Build optimized AAB candidate without ABI splits
+        if: steps.existing.outputs.exists != 'true'
+        run: gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease
 
       - name: Prepare the universal APK and checksum
         if: steps.existing.outputs.exists != 'true'
@@ -146,7 +151,7 @@ jobs:
           if (( APK_SIZE_BYTES >= 100000000 )); then
             echo "::warning title=Universal APK size::The universal APK is $APK_SIZE_BYTES bytes, above the 100 MB download target."
           fi
-          for ABI in arm64-v8a armeabi-v7a; do
+          for ABI in arm64-v8a armeabi-v7a x86_64; do
             if ! unzip -Z1 "$SOURCE" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
               echo "Universal APK is missing the C++ runtime for $ABI." >&2
               exit 1
@@ -156,6 +161,36 @@ jobs:
               exit 1
             fi
           done
+
+          # Publish smaller ABI-specific downloads beside the one-file universal option.
+          for ABI in arm64-v8a armeabi-v7a x86_64; do
+            SPLIT_SOURCE="app/build/outputs/apk/debug/UBAHVO-${VERSION}-${ABI}-debug.apk"
+            SPLIT_DEST="dist/UBAHVO-${VERSION}-${ABI}-debug.apk"
+            if [[ ! -s "$SPLIT_SOURCE" ]]; then
+              echo "Missing or empty ABI-specific APK: $SPLIT_SOURCE" >&2
+              exit 1
+            fi
+            if ! unzip -Z1 "$SPLIT_SOURCE" | grep -Fqx "lib/$ABI/libc++_shared.so"; then
+              echo "ABI APK is missing the C++ runtime for $ABI." >&2
+              exit 1
+            fi
+            if ! unzip -Z1 "$SPLIT_SOURCE" | grep -Fqx "lib/$ABI/libubahvo_native.so"; then
+              echo "ABI APK is missing the Rust/C++ core for $ABI." >&2
+              exit 1
+            fi
+            cp "$SPLIT_SOURCE" "$SPLIT_DEST"
+            SPLIT_SIZE_BYTES="$(stat -c '%s' "$SPLIT_DEST")"
+            echo "$ABI APK download size: $SPLIT_SIZE_BYTES bytes."
+          done
+
+          # Verify CI can package the optimized release App Bundle. This candidate remains
+          # unsigned until a permanent owner-controlled upload key is configured securely.
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          if [[ ! -s "$AAB" ]]; then
+            echo "Missing or empty optimized release AAB candidate: $AAB" >&2
+            exit 1
+          fi
+          echo "Unsigned optimized AAB candidate: $(stat -c '%s' "$AAB") bytes."
 
           # Confirm R8 did not remove the public no-arg constructor used reflectively by
           # Apache Commons Compress 1.12 when registering ZIP extra-field implementations.
@@ -180,7 +215,7 @@ jobs:
           cp "$SOURCE" "$DEST"
           (
             cd dist
-            sha256sum "UBAHVO-${VERSION}-universal-debug.apk" > SHA256SUMS.txt
+            sha256sum UBAHVO-"$VERSION"-*-debug.apk > SHA256SUMS.txt
           )
           cat > dist/RELEASE_NOTES.md <<EOF
           # UBAHVO ${TAG}
@@ -189,12 +224,16 @@ jobs:
 
           **Download size:** approximately ${APK_SIZE_MB} MB (${APK_SIZE_BYTES} bytes; decimal units).
 
-          ## One APK for Android phones
-          Download UBAHVO-${VERSION}-universal-debug.apk. It includes both 64-bit ARM (arm64-v8a) and 32-bit ARM (armeabi-v7a) native runtimes in one file. x86/x86_64 emulators and Intel Android devices are not included. R8 code/resource shrinking and compressed native-library packaging are enabled, but a universal APK is still larger than an APK containing only one ABI.
+          ## Choose your APK
+          - **Universal (simplest):** UBAHVO-${VERSION}-universal-debug.apk includes arm64-v8a, armeabi-v7a, and x86_64 native runtimes in one file. Its download size may exceed the 100 MB target because it bundles every ABI.
+          - **Most current Android phones:** UBAHVO-${VERSION}-arm64-v8a-debug.apk is for 64-bit ARM devices.
+          - **32-bit ARM phones:** UBAHVO-${VERSION}-armeabi-v7a-debug.apk is for supported 32-bit ARM devices.
+          - **Emulators / compatible Intel Android devices:** UBAHVO-${VERSION}-x86_64-debug.apk is the x86_64 build.
+          Install only the ABI-specific APK matching the device. All variants enable R8 and resource shrinking; ABI-specific packages avoid downloading unrelated native runtimes.
 
           ## What's included
           - Kotlin + Jetpack Compose interface with plain-language labels.
-          - MP4 video or MP3 audio from supported single-video YouTube URLs.
+          - MP4 video or MP3 audio from supported HTTPS media links across multiple yt-dlp extractors. Site coverage varies; playlists and batch downloads remain unsupported.
           - Progress, cancellation, recent output history, open/share actions, automatic background yt-dlp support updates, and a manual “Cek sekarang” action. Updates require HTTPS, approved GitHub hosts, and SHA-256 verification.
           - New output files are saved in Download/UBAHVO. Legacy files in Download/YoutubeConvert remain where they are; the app attempts to include them in recent history.
 
@@ -202,7 +241,9 @@ jobs:
           - New application ID: com.ridthewann.ubahvo. Android treats this as a separate app from older builds with ID com.ridthewann.youtubeconvert; this app installs alongside the older installation. Keep both until you have verified UBAHVO and backed up important files; uninstalling an app does not move its existing output files.
           - The current FFmpeg 0.18.1 dependency has a reported 16 KB page-size alignment problem (https://github.com/yausername/youtubedl-android/issues/365). UBAHVO conservatively disables conversion when the device page size is not verified as 4 KB, so this beta cannot convert on every 16 KB-page phone yet.
           - These APKs are built from the Android debug variant and signed with the CI runner's debug key. Later beta builds can require reinstalling.
-          - CI validates unit tests, APK assembly, and native runtime presence; it is not a substitute for physical-device MP3/MP4 smoke tests.
+          - CI also builds an optimized release Android App Bundle (AAB) candidate, but this artifact is unsigned and is not a Play-ready release. A permanent owner-controlled upload key must be configured through secure CI signing settings.
+          - Native conversion remains guarded on devices whose memory page size is not verified as 4 KB because the bundled FFmpeg 0.18.1 payload has a reported 16 KB alignment issue. Supporting x86_64 does not fix that upstream issue.
+          - CI validates unit tests, APK assembly, ABI-native runtime presence, and AAB packaging; it is not a substitute for physical-device MP3/MP4 smoke tests.
           - Download only content you own or are authorized to download. No DRM bypass, cookie import, or private/paid-content access is provided.
           EOF
 
@@ -220,5 +261,8 @@ jobs:
           make_latest: false
           files: |
             dist/UBAHVO-${{ steps.version.outputs.version }}-universal-debug.apk
+            dist/UBAHVO-${{ steps.version.outputs.version }}-arm64-v8a-debug.apk
+            dist/UBAHVO-${{ steps.version.outputs.version }}-armeabi-v7a-debug.apk
+            dist/UBAHVO-${{ steps.version.outputs.version }}-x86_64-debug.apk
             dist/SHA256SUMS.txt
             dist/RELEASE_NOTES.md
