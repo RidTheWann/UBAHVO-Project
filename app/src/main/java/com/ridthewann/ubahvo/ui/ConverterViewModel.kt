@@ -391,13 +391,16 @@ class ConverterViewModel(
                     val parsedTitle = if (snapshot.inputSource == InputSource.LINK) {
                         DownloadOutputParser.videoTitleFromLine(line)
                     } else null
+                    val downloadStage = if (snapshot.inputSource == InputSource.LINK) {
+                        DownloadOutputParser.stageMessageFromLine(line, snapshot.mode)
+                    } else null
                     val localStage = line.takeIf { it.startsWith("LOCAL_STAGE:") }?.removePrefix("LOCAL_STAGE:")
                     val localIndeterminate = line == "LOCAL_MODE:indeterminate"
                     val localDeterminate = line == "LOCAL_MODE:determinate"
                     val progressChanged = lastUiProgress < 0f ||
                         kotlin.math.abs(progress - lastUiProgress) >= 0.5f || progress >= 100f
                     val etaChanged = eta > 0L && eta != lastUiEta
-                    val importantLine = parsedTitle != null || localStage != null ||
+                    val importantLine = parsedTitle != null || downloadStage != null || localStage != null ||
                         line.startsWith("LOCAL_MODE:") ||
                         line.startsWith("[download] Destination:") ||
                         line.startsWith("[Merger]") ||
@@ -418,6 +421,7 @@ class ConverterViewModel(
                                 },
                                 stageMessage = when {
                                     localStage != null -> localStage
+                                    downloadStage != null -> downloadStage
                                     snapshot.inputSource == InputSource.LOCAL_FILE ->
                                         if (progress >= 95f) "Menyimpan hasil media…" else "Mengonversi file media…"
                                     parsedTitle != null && snapshot.mode == OutputMode.MP3 ->
@@ -428,7 +432,8 @@ class ConverterViewModel(
                                     else -> "Mengunduh dan menyiapkan MP4…"
                                 },
                                 lastLogLine = when {
-                                    parsedTitle != null || localStage != null || line.startsWith("LOCAL_") -> null
+                                    parsedTitle != null || downloadStage != null ||
+                                        localStage != null || line.startsWith("LOCAL_") -> null
                                     else -> line.take(180)
                                 }
                             )
