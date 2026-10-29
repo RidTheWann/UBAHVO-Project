@@ -7,6 +7,9 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModelProvider
 import com.ridthewann.ubahvo.ui.ConverterScreen
 import com.ridthewann.ubahvo.ui.ConverterViewModel
@@ -26,11 +29,34 @@ class MainActivity : ComponentActivity() {
         readSharedText(intent)
 
         setContent {
+            val localFilePicker = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument()
+            ) { uri ->
+                if (uri != null) {
+                    runCatching {
+                        contentResolver.takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    }
+                    val details = queryLocalFileDetails(uri)
+                    viewModel.onLocalFileSelected(
+                        uri = uri,
+                        displayName = details.displayName,
+                        mimeType = contentResolver.getType(uri),
+                        sizeBytes = details.sizeBytes
+                    )
+                }
+            }
+
             UbahvoTheme {
                 ConverterScreen(
                     viewModel = viewModel,
                     onOpenOutput = ::openOutput,
-                    onShareOutput = ::shareOutput
+                    onShareOutput = ::shareOutput,
+                    onPickLocalFile = {
+                        localFilePicker.launch(arrayOf("video/*", "audio/*", "application/octet-stream"))
+                    }
                 )
             }
         }
@@ -79,4 +105,30 @@ class MainActivity : ComponentActivity() {
         }
         startActivity(Intent.createChooser(sendIntent, getString(R.string.share_output)))
     }
+
+    private fun queryLocalFileDetails(uri: Uri): LocalFileDetails {
+        var displayName = "media_input"
+        var sizeBytes: Long? = null
+        contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0 && !cursor.isNull(nameIndex)) {
+                    displayName = cursor.getString(nameIndex)?.takeIf { it.isNotBlank() } ?: displayName
+                }
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                    sizeBytes = cursor.getLong(sizeIndex).takeIf { it > 0L }
+                }
+            }
+        }
+        return LocalFileDetails(displayName, sizeBytes)
+    }
+
+    private data class LocalFileDetails(val displayName: String, val sizeBytes: Long?)
 }

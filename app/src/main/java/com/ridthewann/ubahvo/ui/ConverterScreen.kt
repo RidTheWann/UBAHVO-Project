@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ridthewann.ubahvo.core.InputSource
 import com.ridthewann.ubahvo.core.OutputMode
 import com.ridthewann.ubahvo.core.VideoQuality
 import com.ridthewann.ubahvo.data.RecentOutput
@@ -65,7 +67,8 @@ import com.ridthewann.ubahvo.data.RecentOutputFormatting
 fun ConverterScreen(
     viewModel: ConverterViewModel,
     onOpenOutput: (Uri, String) -> Unit,
-    onShareOutput: (Uri, String) -> Unit
+    onShareOutput: (Uri, String) -> Unit,
+    onPickLocalFile: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -166,6 +169,37 @@ fun ConverterScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
+                    "Cara memasukkan media",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = state.inputSource == InputSource.LINK,
+                        onClick = { viewModel.setInputSource(InputSource.LINK) },
+                        enabled = !state.isBusy && !state.isUpdatingYtDlp,
+                        label = { Text("Tautan web") },
+                        leadingIcon = {
+                            androidx.compose.material3.Icon(Icons.Default.Link, contentDescription = null)
+                        }
+                    )
+                    FilterChip(
+                        selected = state.inputSource == InputSource.LOCAL_FILE,
+                        onClick = { viewModel.setInputSource(InputSource.LOCAL_FILE) },
+                        enabled = !state.isBusy && !state.isUpdatingYtDlp,
+                        label = { Text("File perangkat") },
+                        leadingIcon = {
+                            androidx.compose.material3.Icon(Icons.Default.FolderOpen, contentDescription = null)
+                        }
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
                     text = "1. Pilih hasil yang kamu inginkan",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -205,63 +239,120 @@ fun ConverterScreen(
                     modifier = Modifier.padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.Default.Link,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "2. Tempel tautan media",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    OutlinedTextField(
-                        value = state.url,
-                        onValueChange = viewModel::onUrlChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !state.isBusy && !state.isUpdatingYtDlp,
-                        label = { Text("Tautan media") },
-                        placeholder = { Text("Tempel tautan https:// di sini") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp)
-                    )
-
-                    Text(
-                        text = "Di situs atau aplikasi sumber, pilih Bagikan lalu UBAHVO, atau tempel tautan di sini. Banyak situs media didukung, tetapi tidak semua tautan dijamin bekerja. Playlist dan unduhan sekaligus belum didukung.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    if (state.mode == OutputMode.MP4) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Text(
-                            "Kualitas video",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            VideoQuality.entries.forEach { quality ->
-                                FilterChip(
-                                    selected = state.quality == quality,
-                                    onClick = { viewModel.setQuality(quality) },
-                                    enabled = !state.isBusy && !state.isUpdatingYtDlp,
-                                    label = { Text(quality.label) }
-                                )
-                            }
+                    if (state.inputSource == InputSource.LINK) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.Link,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "2. Tempel tautan media",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
+
+                        OutlinedTextField(
+                            value = state.url,
+                            onValueChange = viewModel::onUrlChanged,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !state.isBusy && !state.isUpdatingYtDlp,
+                            label = { Text("Tautan media") },
+                            placeholder = { Text("Tempel tautan https:// di sini") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
                         Text(
-                            "Kualitas lebih tinggi biasanya menghasilkan file yang lebih besar.",
+                            "Pilih Bagikan lalu UBAHVO, atau tempel tautan. Banyak situs media didukung, tetapi tidak semua tautan dijamin bekerja; playlist belum didukung.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        if (state.mode == OutputMode.MP4) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            Text("Kualitas video", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                VideoQuality.entries.forEach { quality ->
+                                    FilterChip(
+                                        selected = state.quality == quality,
+                                        onClick = { viewModel.setQuality(quality) },
+                                        enabled = !state.isBusy && !state.isUpdatingYtDlp,
+                                        label = { Text(quality.label) }
+                                    )
+                                }
+                            }
+                            Text(
+                                "Kualitas lebih tinggi biasanya menghasilkan file yang lebih besar.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.FolderOpen,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "2. Pilih file audio atau video",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = onPickLocalFile,
+                            enabled = !state.isBusy && !state.isUpdatingYtDlp,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            androidx.compose.material3.Icon(Icons.Default.FolderOpen, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (state.localFileUri == null) "Pilih file dari perangkat" else "Ganti file")
+                        }
+
+                        if (state.localFileUri != null) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        state.localFileName ?: "media_input",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        listOfNotNull(
+                                            state.localFileMimeType,
+                                            state.localFileSizeBytes?.let { RecentOutputFormatting.formatSize(it) }
+                                        ).joinToString(" • ").ifBlank { "File dipilih; trek media akan diperiksa sebelum konversi." },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                "Pilih file menggunakan pemilih dokumen Android. UBAHVO memeriksa trek dan encoder sebelum konversi tanpa meminta izin penyimpanan luas.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -334,8 +425,9 @@ fun ConverterScreen(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
                     onClick = viewModel::start,
-                    enabled = state.engineReady && !state.isBusy &&
-                        !state.isUpdatingYtDlp && state.url.isNotBlank(),
+                    enabled = state.engineReady && !state.isBusy && !state.isUpdatingYtDlp &&
+                        (if (state.inputSource == InputSource.LINK) state.url.isNotBlank()
+                        else state.localFileUri != null),
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 56.dp),
@@ -351,11 +443,20 @@ fun ConverterScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text(if (state.mode == OutputMode.MP4) "Sedang menyimpan video…" else "Sedang menyimpan audio…")
+                        Text(when {
+                            state.inputSource == InputSource.LOCAL_FILE -> "Sedang mengonversi file…"
+                            state.mode == OutputMode.MP4 -> "Sedang menyimpan video…"
+                            else -> "Sedang menyimpan audio…"
+                        })
                     } else {
                         androidx.compose.material3.Icon(Icons.Default.Download, contentDescription = null)
                         Spacer(Modifier.width(9.dp))
-                        Text(if (state.mode == OutputMode.MP4) "Simpan video" else "Simpan audio", fontWeight = FontWeight.Bold)
+                        Text(when {
+                            state.inputSource == InputSource.LOCAL_FILE && state.mode == OutputMode.MP4 -> "Jadikan MP4"
+                            state.inputSource == InputSource.LOCAL_FILE -> "Jadikan MP3"
+                            state.mode == OutputMode.MP4 -> "Simpan video"
+                            else -> "Simpan audio"
+                        }, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -375,18 +476,21 @@ fun ConverterScreen(
                         ) {
                             Text(state.stageMessage, style = MaterialTheme.typography.bodySmall)
                             Text(
-                                "${state.progress.toInt()}%",
+                                if (state.isProgressIndeterminate) "…" else "${state.progress.toInt()}%",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        LinearProgressIndicator(
-                            progress = { (state.progress / 100f).coerceIn(0f, 1f) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(50))
-                        )
+                        if (state.isProgressIndeterminate) {
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50))
+                            )
+                        } else {
+                            LinearProgressIndicator(
+                                progress = { (state.progress / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50))
+                            )
+                        }
                         if (state.etaSeconds > 0) {
                             Text(
                                 "Perkiraan waktu tersisa: ${formatEta(state.etaSeconds)}",
