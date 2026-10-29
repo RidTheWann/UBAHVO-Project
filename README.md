@@ -15,7 +15,7 @@
 - A small dependency-free Rust validation core, built as ABI-specific static libraries for `arm64-v8a`, `armeabi-v7a`, and `x86_64`, linked into a small C++17 JNI adapter. The established JVM parser remains as a fallback when the native library is unavailable or the input is non-ASCII.
 - Fast-path validation rejects oversized URLs and malformed or unsupported hosts before starting the downloader; this native parser is deliberately narrow and does not replace network/media processing.
 - Automatic background updates for the official stable yt-dlp script, plus a clear manual “Cek sekarang” action. The updater validates the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before installation, then verifies the staged and installed files and protects against rollback.
-- CI tests, builds the universal ARM APK, checks native C++ runtime packaging, and publishes beta prereleases.
+- CI runs Rust and Android unit tests, builds universal and ABI-specific APKs plus an unsigned AAB candidate, verifies native runtime packaging, measures download sizes, and publishes beta prereleases.
 
 ## Download UBAHVO
 
@@ -41,7 +41,7 @@ New outputs are saved to `Download/UBAHVO`. Existing files in `Download/YoutubeC
 
 ## Native runtime compatibility
 
-The Rust parser and C++ bridge are compiled for both packaged ARM ABIs and the new bridge is linked with 16 KB ELF alignment. This does **not** make the bundled third-party FFmpeg payload 16 KB-compatible; see the existing limitation below.
+The Rust parser and C++ bridge are compiled for the packaged `arm64-v8a`, `armeabi-v7a`, and `x86_64` ABIs; the bridge is linked with 16 KB ELF alignment. This does **not** make the bundled third-party FFmpeg payload 16 KB-compatible; see the existing limitation below.
 
 The published `youtubedl-android` FFmpeg 0.18.1 artifact has an open upstream report because its bundled Rubber Band library needs `libc++_shared.so`, which is missing from that payload: https://github.com/yausername/youtubedl-android/issues/369. The build pins Android NDK 27.2.12479018 and stages an ABI-matched C++ runtime into FFmpeg’s private `usr/lib` directory because that directory is included in the wrapper’s `LD_LIBRARY_PATH`. CI verifies that the APK contains the required runtime; physical-device execution still needs validation.
 
