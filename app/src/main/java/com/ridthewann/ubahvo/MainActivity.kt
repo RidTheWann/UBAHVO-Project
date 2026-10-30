@@ -194,6 +194,9 @@ class MainActivity : ComponentActivity() {
                 }
             } catch (_: Exception) {
                 // Version checks are opportunistic: offline or rate-limited checks never block the app.
+            } catch (error: Throwable) {
+                if (error is VirtualMachineError || error is ThreadDeath) throw error
+                Log.e(TAG, "Non-fatal JVM error during the foreground app-update check", error)
             } finally {
                 appUpdateCheckRunning = false
             }
