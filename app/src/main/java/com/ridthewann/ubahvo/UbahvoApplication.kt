@@ -124,6 +124,11 @@ class UbahvoApplication : Application() {
                         Log.w(TAG, "Automatic media-component update failed; existing components are retained", error)
                         componentMessage =
                             "Pembaruan komponen belum berhasil. UBAHVO tetap dibuka dengan komponen yang tersedia."
+                    } catch (error: Throwable) {
+                        if (error is VirtualMachineError || error is ThreadDeath) throw error
+                        Log.e(TAG, "Non-fatal JVM error during automatic media-component update", error)
+                        componentMessage =
+                            "Pembaruan komponen belum berhasil. UBAHVO tetap dibuka dengan komponen yang tersedia."
                     } finally {
                         preferences.edit()
                             .putLong(
