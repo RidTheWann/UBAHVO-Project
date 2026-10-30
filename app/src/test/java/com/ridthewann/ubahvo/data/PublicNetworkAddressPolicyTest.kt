@@ -78,7 +78,32 @@ class PublicNetworkAddressPolicyTest {
     }
 
     @Test
-    fun rejectsMixedOrUnsupportedAddressFamiliesRatherThanAssumingGlobalReachability() {
+    fun rejectsMixedDnsAnswersEvenWhenTheyContainPublicAddresses() {
+        val mixed = listOf(
+            InetAddress.getByName("8.8.8.8"),
+            InetAddress.getByName("192.168.1.1")
+        )
+
+        assertFalse(PublicNetworkAddressPolicy.areAllGloballyReachable(mixed))
+    }
+
+    @Test
+    fun rejectsEmptyDnsAnswerSets() {
+        assertFalse(PublicNetworkAddressPolicy.areAllGloballyReachable(emptyList()))
+    }
+
+    @Test
+    fun acceptsDnsAnswersOnlyWhenEveryAddressIsGlobal() {
+        val answers = listOf(
+            InetAddress.getByName("1.1.1.1"),
+            InetAddress.getByName("2606:4700:4700::1111")
+        )
+
+        assertTrue(PublicNetworkAddressPolicy.areAllGloballyReachable(answers))
+    }
+
+    @Test
+    fun rejectsUnsupportedAddressFamiliesRatherThanAssumingGlobalReachability() {
         assertFalse(isGlobal("localhost"))
     }
 
