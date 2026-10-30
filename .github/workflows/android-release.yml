@@ -131,6 +131,7 @@ jobs:
         run: gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease
 
       - name: Test and audit native ELF 16 KB compatibility
+        if: steps.existing.outputs.exists != 'true'
         shell: bash
         run: |
           set -euo pipefail
