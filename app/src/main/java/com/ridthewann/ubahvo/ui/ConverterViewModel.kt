@@ -64,11 +64,7 @@ class ConverterViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         ConverterUiState(
-            stageMessage = if (application.engineSupported || application.engineReady) {
-                "Tempel tautan media untuk memulai."
-            } else {
-                "Fitur konversi media belum tersedia di perangkat ini."
-            },
+            stageMessage = "Tempel tautan media untuk memulai.",
             errorMessage = application.engineError,
             engineReady = application.engineReady,
             engineSupported = application.engineSupported
