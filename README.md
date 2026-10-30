@@ -13,6 +13,7 @@
 - Progress reporting for extraction, format selection, transfer, and post-processing; segmented DASH/HLS downloads request up to four concurrent fragments. Initial extraction still depends on the site and network.
 - Local audio/video conversion to MP3 or MP4 from files selected through Android's document picker. FFprobe inspects the streams before FFmpeg runs; selected input is copied into app-private cache, and temporary files are removed when the job finishes or is cancelled.
 - Saves supported direct images and primary preview images from public metadata pages to `Download/UBAHVO`, preserving recognized JPEG, PNG, WebP, GIF, AVIF, HEIC, and BMP payloads. No external image downloader library is used for this path.
+- Image requests use OkHttp with a public-only DNS resolver. The full IPv4/IPv6 answer set is validated and then supplied directly to the HTTP client for routing; every redirect is handled manually and independently revalidated. TLS hostname/certificate verification remains at OkHttp defaults, proxies are disabled, responses have strict size/read/call limits, and partial-content responses are rejected.
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
 - HTTPS media URL preflight and unit tests.
