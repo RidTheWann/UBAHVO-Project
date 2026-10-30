@@ -9,6 +9,7 @@ class MediaSourceDetectorTest {
         val examples = mapOf(
             "https://www.tiktok.com/@creator/video/1234567890" to "TikTok",
             "https://vm.tiktok.com/ZMabc123/" to "TikTok",
+            "https://vt.tiktok.com/ZSgWpeQKW/" to "TikTok",
             "https://www.instagram.com/reel/ABC123/" to "Instagram",
             "https://instagr.am/p/ABC123/" to "Instagram",
             "https://www.facebook.com/watch/?v=123456789" to "Facebook",
