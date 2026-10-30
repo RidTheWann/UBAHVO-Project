@@ -32,6 +32,10 @@ internal object PublicNetworkAddressPolicy {
         Ipv4Prefix(0xF0000000L, 4)   // Reserved and limited broadcast
     )
 
+    /** Reject empty or mixed public/private DNS answers rather than selecting only public entries. */
+    fun areAllGloballyReachable(addresses: List<InetAddress>): Boolean =
+        addresses.isNotEmpty() && addresses.all { isGloballyReachable(it) }
+
     fun isGloballyReachable(address: InetAddress): Boolean {
         if (address.isAnyLocalAddress || address.isLoopbackAddress ||
             address.isLinkLocalAddress || address.isSiteLocalAddress ||
