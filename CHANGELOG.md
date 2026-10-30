@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.17
+
+- Harden the beta.16 startup transition: recoverable native/JVM initialization failures now leave the main interface available in limited mode rather than abandoning the foreground startup flow.
+- Keep MP4/MP3 conversion disabled when the native media engine cannot be safely initialized; non-native screens and the public image path remain available.
+- Make optional component updates, release checks, and background JobScheduler registration best-effort so recoverable updater/runtime errors do not take down the converter.
+- Recognize and label common social share links from TikTok, Instagram, Facebook, X/Twitter, Threads, Reddit, Pinterest, and Snapchat, alongside existing YouTube/Vimeo/Twitch/SoundCloud sources.
+- Route public media video/audio extraction through the existing yt-dlp adapter; provider availability remains extractor-dependent and private/sign-in-only/DRM-restricted content is not bypassed.
+- Replace the image fetcher's check-then-connect path with OkHttp 5.4.0 and a public-only DNS resolver that validates and returns the exact address set used for routing. Keep standard TLS hostname/certificate verification and disable proxies and automatic redirects.
+- Revalidate each image redirect, reject mixed or non-global IPv4/IPv6 DNS answers (including CGNAT, benchmarking, documentation, and reserved ranges), cap HTML/image response sizes and request duration, reject partial responses, and preserve cancellation/cleanup behavior.
+- Add regression tests for social share URLs, provider recognition, IPv4/IPv6 address policy, mixed/empty DNS answers, and public-only DNS resolution.
+- Keep Android compile SDK 36 / AGP 8.13.2 compatibility by pinning OkHttp 5.4.0; no new native binaries or permissions are added.
+
 ## 0.1.0-beta.16
 
 - Add a first-party Kotlin image-link pipeline for direct HTTPS image assets and the primary image declared by public Open Graph/Twitter metadata. This image path does not invoke yt-dlp or FFmpeg.
