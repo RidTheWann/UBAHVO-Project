@@ -40,6 +40,11 @@ class AppUpdateCheckJobService : JobService() {
                 if (!run.cancelled.get()) {
                     Log.w(TAG, "Scheduled app-update check failed; it will retry on a later run", error)
                 }
+            } catch (error: Throwable) {
+                if (error is VirtualMachineError || error is ThreadDeath) throw error
+                if (!run.cancelled.get()) {
+                    Log.e(TAG, "Non-fatal JVM error in scheduled app-update check", error)
+                }
             } finally {
                 // Android has already released the job when onStopJob is called. Do not call
                 // jobFinished for a run that the system has stopped.
