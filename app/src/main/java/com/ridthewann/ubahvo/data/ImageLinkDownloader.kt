@@ -10,7 +10,7 @@ import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.net.HttpsURLConnection
+import javax.net.ssl.HttpsURLConnection
 import java.net.Proxy
 import java.net.InetAddress
 import java.net.URI
@@ -70,7 +70,7 @@ internal class ImageLinkDownloader(
                     )
                 metadata.title?.let { onProgress(2f, 0L, "IMAGE_TITLE:$it") }
                 // DNS is resolved and pinned exactly once per request inside openFollowingRedirects.
-                // Do not resolve here and then resolve again when HttpURLConnection opens the socket.
+                // Do not resolve here and then resolve again when the HTTPS connection opens the socket.
                 val candidates = metadata.imageUrls.mapNotNull { MediaUrlValidator.normalize(it) }
                     .distinct().take(MAX_IMAGE_CANDIDATES)
                 if (candidates.isEmpty()) {
