@@ -137,7 +137,7 @@ fun ConverterScreen(
                 }
             }
 
-            if (!state.engineReady && !(state.inputSource == InputSource.LINK && state.mode == OutputMode.IMAGE)) {
+            if (!state.engineSupported && !(state.inputSource == InputSource.LINK && state.mode == OutputMode.IMAGE)) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(18.dp),
@@ -145,18 +145,27 @@ fun ConverterScreen(
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(
-                            "Komponen media belum tersedia",
+                            "Komponen media tidak kompatibel",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            state.errorMessage ?: "Fitur konversi belum didukung pada konfigurasi perangkat ini.",
+                            state.errorMessage ?: "Konversi MP4/MP3 dinonaktifkan pada konfigurasi perangkat ini.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+            } else if (
+                state.engineSupported && !state.engineReady &&
+                !(state.inputSource == InputSource.LINK && state.mode == OutputMode.IMAGE)
+            ) {
+                Text(
+                    "Komponen media akan disiapkan saat pertama kali kamu menyimpan MP4/MP3. Gambar dari tautan publik bisa disimpan langsung.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

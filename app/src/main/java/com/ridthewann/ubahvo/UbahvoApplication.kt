@@ -4,10 +4,9 @@ import android.app.Application
 import android.system.Os
 import android.system.OsConstants
 import android.util.Log
+import com.ridthewann.ubahvo.core.NativeMediaCompatibility
 import com.ridthewann.ubahvo.core.NativeMediaStartup
 import com.ridthewann.ubahvo.data.NativeRuntimeRepair
-import com.ridthewann.ubahvo.data.StableYtDlpUpdater
-import com.ridthewann.ubahvo.data.YtDlpAutoUpdatePolicy
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +23,11 @@ class UbahvoApplication : Application() {
     var engineReady: Boolean = false
         private set
 
+    /** True when this device passed the conservative native-runtime compatibility gate. */
+    @Volatile
+    var engineSupported: Boolean = false
+        private set
+
     @Volatile
     var engineError: String? = null
         private set
@@ -33,125 +37,145 @@ class UbahvoApplication : Application() {
         private set
 
     @Volatile
+    private var compatibilityChecked = false
+
+    @Volatile
     private var initializationComplete = false
 
     private val initializationLock = Any()
 
     override fun onCreate() {
         super.onCreate()
-        // Native startup is deferred so the launcher can display the welcome animation first.
+        // Keep process startup lightweight. Native packages are extracted only when the user
+        // first requests MP4/MP3 conversion, not immediately after the welcome animation.
     }
 
     /**
-     * Leaves the non-native app usable if an unexpected startup-stage failure escapes the
-     * guarded native initializer. The media engine stays disabled until a later app process.
+     * Performs only the cheap compatibility check needed to show the app UI. It deliberately
+     * does not unpack Python/FFmpeg or load the native media wrappers during Activity startup.
      */
-    fun markMediaEngineUnavailable(error: Throwable) {
-        engineReady = false
-        engineError = "Komponen media gagal disiapkan. Aplikasi tetap bisa dibuka, tetapi fitur MP4/MP3 dinonaktifkan sampai aplikasi dibuka ulang setelah pembaruan."
-        initializationComplete = true
-        Log.e(TAG, "Media engine marked unavailable after startup failure", error)
-    }
-
     suspend fun prepareStartup(onStage: (String) -> Unit): StartupPreparationResult =
         withContext(Dispatchers.IO) {
-            synchronized(initializationLock) {
-                if (!initializationComplete) {
-                    onStage("Memeriksa kompatibilitas perangkat…")
-                    val detectedPageSize = runCatching {
-                        Os.sysconf(OsConstants._SC_PAGE_SIZE)
-                    }.getOrNull()
-                    pageSizeBytes = detectedPageSize
-
-                    val result = NativeMediaStartup.initialize(detectedPageSize) { setStage ->
-                        setStage("Inisialisasi yt-dlp")
-                        onStage("Inisialisasi yt-dlp")
-                        YoutubeDL.getInstance().init(this@UbahvoApplication)
-
-                        setStage("Inisialisasi FFmpeg")
-                        onStage("Inisialisasi FFmpeg")
-                        FFmpeg.getInstance().init(this@UbahvoApplication)
-
-                        setStage("Perbaikan runtime C++ FFmpeg")
-                        onStage("Menyiapkan runtime media…")
-                        NativeRuntimeRepair.ensureFfmpegCppRuntime(this@UbahvoApplication)
-                    }
-
-                    engineReady = result.engineReady
-                    engineError = result.errorMessage
-                    when {
-                        result.failure is LinkageError -> Log.e(
-                            TAG,
-                            "Media engine linkage failed; app startup will continue without conversion",
-                            result.failure
-                        )
-                        result.failure != null -> Log.e(
-                            TAG,
-                            "Media engine initialization failed; conversion is disabled",
-                            result.failure
-                        )
-                        !result.engineReady -> Log.w(
-                            TAG,
-                            "Native media conversion disabled: " + result.errorMessage
-                        )
-                    }
-                    initializationComplete = true
-                }
-            }
-
-            var componentMessage = "Komponen media siap."
-            if (!engineReady) {
-                componentMessage = engineError ?: "Komponen media tidak tersedia di perangkat ini."
-            } else {
-                val preferences = getSharedPreferences(AUTO_UPDATE_PREFERENCES, MODE_PRIVATE)
-                val nextCheckAt = preferences.getLong(KEY_NEXT_AUTO_UPDATE_AT, 0L)
-                if (YtDlpAutoUpdatePolicy.isDue(System.currentTimeMillis(), nextCheckAt)) {
-                    onStage("Memeriksa dan memperbarui komponen media…")
-                    var succeeded = false
-                    try {
-                        val result = StableYtDlpUpdater(this@UbahvoApplication).update()
-                        succeeded = true
-                        val version = result.versionName?.takeIf { it.isNotBlank() }
-                            ?: result.version?.takeIf { it.isNotBlank() }
-                        componentMessage = if (result.updated) {
-                            "Komponen media berhasil diperbarui" +
-                                (version?.let { " ke $it" } ?: "") + "."
-                        } else {
-                            "Komponen media sudah terbaru" +
-                                (version?.let { " ($it)" } ?: "") + "."
-                        }
-                    } catch (error: Exception) {
-                        Log.w(TAG, "Automatic media-component update failed; existing components are retained", error)
-                        componentMessage =
-                            "Pembaruan komponen belum berhasil. UBAHVO tetap dibuka dengan komponen yang tersedia."
-                    } catch (error: Throwable) {
-                        if (error is VirtualMachineError || error is ThreadDeath) throw error
-                        Log.e(TAG, "Non-fatal JVM error during automatic media-component update", error)
-                        componentMessage =
-                            "Pembaruan komponen belum berhasil. UBAHVO tetap dibuka dengan komponen yang tersedia."
-                    } finally {
-                        preferences.edit()
-                            .putLong(
-                                KEY_NEXT_AUTO_UPDATE_AT,
-                                YtDlpAutoUpdatePolicy.nextCheckAt(System.currentTimeMillis(), succeeded)
-                            )
-                            .apply()
-                    }
-                } else {
-                    onStage("Menyelesaikan persiapan…")
-                }
-            }
-
+            ensureCompatibilityChecked(onStage)
             StartupPreparationResult(
                 engineReady = engineReady,
                 errorMessage = engineError,
-                componentMessage = componentMessage
+                componentMessage = when {
+                    engineReady -> "Komponen media siap."
+                    !engineSupported -> engineError
+                        ?: "Konversi dinonaktifkan pada perangkat yang belum kompatibel."
+                    else -> "Komponen media akan disiapkan saat konversi pertama."
+                }
             )
         }
 
+    /**
+     * Performs the expensive media setup on the first explicit MP4/MP3 request.
+     *
+     * If native/JVM initialization fails, the engine is disabled for this process and the
+     * caller receives a normal unavailable result. Fatal VM conditions are never swallowed.
+     */
+    suspend fun ensureMediaEngineInitialized(
+        onStage: (String) -> Unit
+    ): StartupPreparationResult = withContext(Dispatchers.IO) {
+        ensureCompatibilityChecked(onStage)
+        if (!engineSupported) {
+            return@withContext StartupPreparationResult(
+                engineReady = false,
+                errorMessage = engineError ?: NativeMediaCompatibility.userFacingMessage(pageSizeBytes),
+                componentMessage = "Komponen media tidak kompatibel dengan perangkat ini."
+            )
+        }
+
+        synchronized(initializationLock) {
+            if (!initializationComplete) {
+                val result = NativeMediaStartup.initialize(pageSizeBytes) { setStage ->
+                    setStage("Inisialisasi yt-dlp")
+                    onStage("Menyiapkan yt-dlp dan runtime Python…")
+                    YoutubeDL.getInstance().init(this@UbahvoApplication)
+
+                    setStage("Inisialisasi FFmpeg")
+                    onStage("Menyiapkan komponen FFmpeg…")
+                    FFmpeg.getInstance().init(this@UbahvoApplication)
+
+                    setStage("Perbaikan runtime C++ FFmpeg")
+                    onStage("Memverifikasi runtime media…")
+                    NativeRuntimeRepair.ensureFfmpegCppRuntime(this@UbahvoApplication)
+                }
+
+                engineReady = result.engineReady
+                engineSupported = result.engineReady
+                engineError = result.errorMessage
+                when {
+                    result.failure is LinkageError -> Log.e(
+                        TAG,
+                        "Media engine linkage failed; conversion is disabled for this process",
+                        result.failure
+                    )
+                    result.failure != null -> Log.e(
+                        TAG,
+                        "Media engine initialization failed; conversion is disabled for this process",
+                        result.failure
+                    )
+                    !result.engineReady -> Log.w(
+                        TAG,
+                        "Native media conversion disabled: " + result.errorMessage
+                    )
+                }
+                // Do not repeatedly execute a partially failed native initializer in the same
+                // process. A fresh process after an app/runtime update can retry safely.
+                initializationComplete = true
+            }
+        }
+
+        StartupPreparationResult(
+            engineReady = engineReady,
+            errorMessage = engineError,
+            componentMessage = if (engineReady) {
+                "Komponen media siap."
+            } else {
+                engineError ?: "Komponen media gagal disiapkan."
+            }
+        )
+    }
+
+    private fun ensureCompatibilityChecked(onStage: (String) -> Unit) {
+        if (compatibilityChecked) return
+        synchronized(initializationLock) {
+            if (compatibilityChecked) return
+            onStage("Memeriksa kompatibilitas perangkat…")
+            val detectedPageSize = try {
+                Os.sysconf(OsConstants._SC_PAGE_SIZE)
+            } catch (error: Throwable) {
+                if (error is VirtualMachineError || error is ThreadDeath) throw error
+                Log.w(TAG, "Could not read the device memory page size; media conversion will remain disabled", error)
+                null
+            }
+            pageSizeBytes = detectedPageSize
+            engineSupported = NativeMediaCompatibility.supportsBundledFfmpeg(detectedPageSize)
+            if (!engineSupported) {
+                engineError = NativeMediaCompatibility.userFacingMessage(detectedPageSize)
+                initializationComplete = true
+                Log.w(TAG, "Native media conversion disabled: " + engineError)
+            }
+            compatibilityChecked = true
+        }
+    }
+
+    /**
+     * Leaves the non-native app usable if an unexpected startup-stage failure escapes a
+     * guarded operation. The media engine stays disabled until a later app process.
+     */
+    fun markMediaEngineUnavailable(error: Throwable) {
+        engineReady = false
+        engineSupported = false
+        engineError = "Komponen media gagal disiapkan. Aplikasi tetap bisa dibuka, tetapi fitur MP4/MP3 dinonaktifkan sampai aplikasi dibuka ulang setelah pembaruan."
+        compatibilityChecked = true
+        initializationComplete = true
+        Log.e(TAG, "Media engine marked unavailable", error)
+    }
+
     companion object {
         private const val TAG = "UBAHVO"
-        private const val AUTO_UPDATE_PREFERENCES = "automatic_ytdlp_support_updates"
-        private const val KEY_NEXT_AUTO_UPDATE_AT = "next_check_at_ms"
     }
 }

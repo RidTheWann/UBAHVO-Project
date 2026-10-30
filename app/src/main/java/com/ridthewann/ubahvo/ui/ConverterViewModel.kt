@@ -48,6 +48,7 @@ data class ConverterUiState(
     val outputMimeType: String = "video/mp4",
     val lastLogLine: String? = null,
     val engineReady: Boolean = false,
+    val engineSupported: Boolean = false,
     val isUpdatingYtDlp: Boolean = false,
     val isAutoUpdatingYtDlp: Boolean = false,
     val ytdlpVersion: String? = null,
@@ -63,13 +64,10 @@ class ConverterViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         ConverterUiState(
-            stageMessage = if (application.engineReady) {
-                "Tempel tautan media untuk memulai."
-            } else {
-                "Fitur simpan belum tersedia di perangkat ini."
-            },
+            stageMessage = "Tempel tautan media untuk memulai.",
             errorMessage = application.engineError,
-            engineReady = application.engineReady
+            engineReady = application.engineReady,
+            engineSupported = application.engineSupported
         )
     )
     val uiState: StateFlow<ConverterUiState> = _uiState.asStateFlow()
@@ -81,7 +79,22 @@ class ConverterViewModel(
     private var autoUpdateJob: Job? = null
 
     init {
-        autoUpdateYtDlpIfDue()
+        try {
+            autoUpdateYtDlpIfDue()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            // Automatic support updates are optional; a synchronous preference/scheduler error
+            // must not abort ViewModel construction while the main screen is being created.
+            if (error is VirtualMachineError || error is ThreadDeath) throw error
+            android.util.Log.e("UBAHVO", "Could not start the optional automatic yt-dlp update check", error)
+            _uiState.update {
+                it.copy(
+                    isAutoUpdatingYtDlp = false,
+                    ytdlpUpdateMessage = "Pemeriksaan otomatis belum bisa dimulai. Dukungan tautan yang tersedia tetap dapat dicoba."
+                )
+            }
+        }
     }
 
     /**
@@ -356,11 +369,13 @@ class ConverterViewModel(
         val snapshot = _uiState.value
         if (snapshot.isBusy || snapshot.isUpdatingYtDlp) return
 
-        if (snapshot.mode != OutputMode.IMAGE && !application.engineReady) {
+        if (snapshot.mode != OutputMode.IMAGE && !application.engineSupported) {
             _uiState.update {
                 it.copy(
+                    engineReady = false,
+                    engineSupported = false,
                     errorMessage = application.engineError
-                        ?: "Fitur media belum siap. Tutup lalu buka kembali UBAHVO. Jika masalah berlanjut, coba lagi setelah pembaruan."
+                        ?: "Konversi MP4/MP3 belum didukung pada konfigurasi perangkat ini."
                 )
             }
             return
@@ -411,6 +426,62 @@ class ConverterViewModel(
             }
 
             try {
+                if (snapshot.mode != OutputMode.IMAGE && !application.engineReady) {
+                    _uiState.update {
+                        it.copy(
+                            isProgressIndeterminate = true,
+                            stageMessage = "Menyiapkan komponen media untuk pertama kali…"
+                        )
+                    }
+                    val prepared = application.ensureMediaEngineInitialized { message ->
+                        _uiState.update {
+                            it.copy(
+                                isProgressIndeterminate = true,
+                                stageMessage = message,
+                                errorMessage = null
+                            )
+                        }
+                    }
+                    _uiState.update {
+                        it.copy(
+                            engineReady = prepared.engineReady,
+                            engineSupported = application.engineSupported,
+                            isProgressIndeterminate = false,
+                            stageMessage = prepared.componentMessage,
+                            errorMessage = prepared.errorMessage
+                        )
+                    }
+                    if (!prepared.engineReady) {
+                        throw LocalMediaConversionException(
+                            prepared.errorMessage
+                                ?: "Komponen media tidak dapat disiapkan pada perangkat ini.",
+                            null
+                        )
+                    }
+                    // Start the optional support-component update only after the native runtime
+                    // has initialized successfully. It runs in the background and does not block
+                    // the current conversion.
+                    if (snapshot.inputSource == InputSource.LINK) {
+                        try {
+                            autoUpdateYtDlpIfDue()
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Throwable) {
+                            if (error is VirtualMachineError || error is ThreadDeath) throw error
+                            android.util.Log.e(
+                                "UBAHVO",
+                                "Could not start the optional yt-dlp update after lazy engine initialization",
+                                error
+                            )
+                            _uiState.update {
+                                it.copy(
+                                    ytdlpUpdateMessage = "Pemeriksaan otomatis belum bisa dimulai. Konversi tetap dapat dilanjutkan."
+                                )
+                            }
+                        }
+                    }
+                }
+
                 var lastUiProgress = -1f
                 var lastUiEta = 0L
                 val onProgress: (Float, Long, String) -> Unit = { progress, eta, line ->
