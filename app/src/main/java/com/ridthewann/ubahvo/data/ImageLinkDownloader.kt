@@ -50,6 +50,7 @@ internal class ImageLinkDownloader(
         .proxy(Proxy.NO_PROXY)
         .connectTimeout(CONNECT_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
         .readTimeout(READ_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+        .callTimeout(CALL_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
         .followRedirects(false)
         .followSslRedirects(false)
         .retryOnConnectionFailure(true)
@@ -209,9 +210,9 @@ internal class ImageLinkDownloader(
                 }
                 return@repeat
             }
-            if (status !in 200..299) {
+            if (status !in 200..299 || status == 206 || response.header("Content-Range") != null) {
                 closeResponse(processId, opened)
-                throw ImageLinkException("Sumber menolak permintaan gambar (HTTP $status).")
+                throw ImageLinkException("Sumber menolak atau hanya mengirim sebagian data gambar (HTTP $status).")
             }
             return opened
         }
@@ -359,6 +360,7 @@ internal class ImageLinkDownloader(
         private const val IMAGE_ACCEPT = "image/avif,image/webp,image/png,image/jpeg,image/gif,image/*,text/html;q=0.8,*/*;q=0.5"
         private const val CONNECT_TIMEOUT_MS = 12_000
         private const val READ_TIMEOUT_MS = 20_000
+        private const val CALL_TIMEOUT_MS = 10 * 60 * 1000
         private const val MAX_REDIRECTS = 5
         private const val MAX_IMAGE_CANDIDATES = 5
         private const val MAX_IMAGE_BYTES = 100L * 1024L * 1024L
