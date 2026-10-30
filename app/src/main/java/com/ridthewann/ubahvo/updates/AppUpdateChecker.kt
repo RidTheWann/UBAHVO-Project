@@ -126,7 +126,7 @@ internal object AppUpdateChecker {
                 val asset = assets.optJSONObject(assetIndex) ?: return@mapNotNull null
                 asset.optString("name", "") to asset.optLong("size", 0L)
             }
-            if (!hasSupportedArm64Apk(assetNamesAndSizes, tag) || version <= current) continue
+            if (!hasSupportedApkAsset(assetNamesAndSizes, tag) || version <= current) continue
 
             val info = AppUpdateInfo(tag, tag.removePrefix("v"), releaseUrl)
             if (newest == null || version > newest.first) newest = version to info
@@ -139,15 +139,16 @@ internal object AppUpdateChecker {
      * Accept the versioned beta debug APK and the versioned production APK naming convention.
      * A tag-specific exact name prevents an unrelated/stale ARM64 APK from advertising an update.
      */
-    internal fun hasSupportedArm64Apk(
+    internal fun hasSupportedApkAsset(
         assetNamesAndSizes: Iterable<Pair<String, Long>>,
         tag: String
     ): Boolean {
         val version = tag.removePrefix("v")
         val acceptedNames = setOf(
+            "UBAHVO-$version-universal-debug.apk",
+            "UBAHVO-$version-universal.apk",
             "UBAHVO-$version-arm64-v8a-debug.apk",
-            "UBAHVO-$version-arm64-v8a.apk",
-            "UBAHVO-arm64-v8a.apk"
+            "UBAHVO-$version-arm64-v8a.apk"
         )
         return assetNamesAndSizes.any { (name, size) ->
             size > 0L && acceptedNames.any { it.equals(name, ignoreCase = true) }
