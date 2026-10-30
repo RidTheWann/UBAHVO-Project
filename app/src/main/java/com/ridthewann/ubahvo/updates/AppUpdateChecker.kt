@@ -122,16 +122,37 @@ internal object AppUpdateChecker {
             val version = parseVersion(tag) ?: continue
             val releaseUrl = validateReleaseUrl(release.optString("html_url", ""), tag) ?: continue
             val assets = release.optJSONArray("assets") ?: continue
-            val hasArm64Apk = (0 until assets.length()).any { assetIndex ->
-                val name = assets.optJSONObject(assetIndex)?.optString("name", "").orEmpty()
-                name.endsWith("-arm64-v8a-debug.apk", ignoreCase = true)
+            val assetNamesAndSizes = (0 until assets.length()).mapNotNull { assetIndex ->
+                val asset = assets.optJSONObject(assetIndex) ?: return@mapNotNull null
+                asset.optString("name", "") to asset.optLong("size", 0L)
             }
-            if (!hasArm64Apk || version <= current) continue
+            if (!hasSupportedApkAsset(assetNamesAndSizes, tag) || version <= current) continue
 
             val info = AppUpdateInfo(tag, tag.removePrefix("v"), releaseUrl)
             if (newest == null || version > newest.first) newest = version to info
         }
         return newest?.second
+    }
+
+
+    /**
+     * Accept the versioned beta debug APK and the versioned production APK naming convention.
+     * A tag-specific exact name prevents an unrelated/stale ARM64 APK from advertising an update.
+     */
+    internal fun hasSupportedApkAsset(
+        assetNamesAndSizes: Iterable<Pair<String, Long>>,
+        tag: String
+    ): Boolean {
+        val version = tag.removePrefix("v")
+        val acceptedNames = setOf(
+            "UBAHVO-$version-universal-debug.apk",
+            "UBAHVO-$version-universal.apk",
+            "UBAHVO-$version-arm64-v8a-debug.apk",
+            "UBAHVO-$version-arm64-v8a.apk"
+        )
+        return assetNamesAndSizes.any { (name, size) ->
+            size > 0L && acceptedNames.any { it.equals(name, ignoreCase = true) }
+        }
     }
 
     internal fun isNewerVersion(candidate: String, current: String): Boolean {
