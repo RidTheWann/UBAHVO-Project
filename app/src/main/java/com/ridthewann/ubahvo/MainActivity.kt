@@ -135,16 +135,25 @@ class MainActivity : ComponentActivity() {
                 .get(ConverterViewModel::class.java)
             mainContentReady.value = true
 
-            runCatching { readSharedText(intent) }
-                .onFailure { Log.w(TAG, "Could not process the launch share intent", it) }
+            try {
+                readSharedText(intent)
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not process the launch share intent", error)
+            }
 
             // Background update scheduling is optional and must never be able to take down
             // the foreground converter, particularly on emulators with partial JobScheduler support.
-            runCatching { AppUpdateCheckJobService.schedule(this@MainActivity) }
-                .onFailure { Log.w(TAG, "Could not schedule background app-update checks", it) }
+            try {
+                AppUpdateCheckJobService.schedule(this@MainActivity)
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not schedule background app-update checks", error)
+            }
 
-            runCatching { checkForAppUpdates() }
-                .onFailure { Log.w(TAG, "Could not start the foreground app-update check", it) }
+            try {
+                checkForAppUpdates()
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not start the foreground app-update check", error)
+            }
         }
     }
 
