@@ -38,7 +38,7 @@ internal class ImageLinkDownloader(
     private data class OpenedResponse(val finalUrl: String, val connection: HttpsURLConnection)
     private data class StagedImage(val file: File, val format: RecognizedImageFormat, val displayName: String)
 
-    private val activeConnections = ConcurrentHashMap<String, HttpURLConnection>()
+    private val activeConnections = ConcurrentHashMap<String, HttpsURLConnection>()
 
     suspend fun download(
         url: String,
