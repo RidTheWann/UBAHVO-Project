@@ -170,6 +170,7 @@ class UbahvoApplication : Application() {
         engineReady = false
         engineSupported = false
         engineError = "Komponen media gagal disiapkan. Aplikasi tetap bisa dibuka, tetapi fitur MP4/MP3 dinonaktifkan sampai aplikasi dibuka ulang setelah pembaruan."
+        compatibilityChecked = true
         initializationComplete = true
         Log.e(TAG, "Media engine marked unavailable", error)
     }
