@@ -326,7 +326,7 @@ internal class ImageLinkDownloader(
         } catch (error: Exception) {
             throw ImageLinkException("Host gambar tidak dapat dijangkau.", error)
         }
-        if (addresses.isEmpty() || addresses.any { !PublicNetworkAddressPolicy.isGloballyReachable(it) }) {
+        if (!PublicNetworkAddressPolicy.areAllGloballyReachable(addresses)) {
             throw ImageLinkException("Tautan menuju alamat jaringan nonpublik atau khusus yang tidak diizinkan.")
         }
         return ValidatedPublicUrl(normalized, host, addresses)
