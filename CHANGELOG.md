@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-beta.18
+
+- Fix the first-use Save-button deadlock for MP4/MP3. The app now enables the action after a successful native compatibility check even though the media engine is intentionally initialized lazily on the first request; incompatible devices remain blocked.
+- Wait for any due yt-dlp maintenance update to finish before starting remote extraction, preventing the first request from racing an in-progress verified update.
+- Add a narrowly scoped browser User-Agent policy for TikTok/TikTok short-link hosts, including `vt.tiktok.com`. Other providers keep their normal request identity; this is a compatibility workaround, not authentication or a guarantee against future service changes.
+- Expand regression coverage for action availability, first-use initialization, TikTok short links, updater synchronization, and downloader HTTP/DNS security.
+- Keep image downloads independent of the native media engine. Public image retrieval continues to use the first-party HTTPS pipeline.
+- Preserve the native page-size compatibility guard. This beta does not claim 16 KB native compatibility; the known third-party FFmpeg/Python ELF alignment issue remains a release blocker.
+- Continue to require public, accessible media and user authorization. Private/sign-in-only/DRM-restricted downloads, playlist extraction, and batch jobs are not enabled.
+
 ## 0.1.0-beta.17
 
 - Harden the beta.16 startup transition: recoverable native/JVM initialization failures now leave the main interface available in limited mode rather than abandoning the foreground startup flow.

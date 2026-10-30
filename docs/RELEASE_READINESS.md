@@ -2,23 +2,25 @@
 
 ## Release channel
 
-The automated release is intentionally a beta prerelease. CI produces one universal ARM APK from the Android debug variant, attaches a SHA-256 checksum, and records known limitations. R8 code/resource shrinking and compressed native-library packaging are enabled; the APK includes both ARM ABIs and will still be larger than a single-ABI APK. This repository does not currently have a persistent private Android release-signing key configured, so this workflow must not be represented as a production-signed stable release.
+The automated release is intentionally a beta prerelease. CI produces a universal APK plus ABI-specific APKs for arm64-v8a, armeabi-v7a, and x86_64, attaches SHA-256 checksums and release notes, and builds an unsigned optimized AAB candidate. R8 code/resource shrinking and compressed native-library packaging are enabled. APKs are debug-signed with the CI runner's ephemeral key; this workflow must not be represented as a production-signed stable release.
 
 ## Current beta milestone
 
-`0.1.0-beta.8` uses the UBAHVO application ID and Kotlin namespace/package. It publishes one direct-install APK containing `arm64-v8a` and `armeabi-v7a`, with x86/x86_64 excluded to reduce the download size. It also enables R8 and Android resource shrinking. Because the application ID changed from `com.ridthewann.youtubeconvert` to `com.ridthewann.ubahvo`, Android installs beta.8 as a separate app rather than an in-place update. Earlier beta milestones added the user-triggered stable yt-dlp updater, SHA-256 asset verification, rollback protection, and recent conversion history.
+`0.1.0-beta.18` is the current beta milestone and retains the UBAHVO application ID `com.ridthewann.ubahvo`. It publishes a universal APK plus ABI-specific builds for `arm64-v8a`, `armeabi-v7a`, and `x86_64`. CI also builds an unsigned optimized AAB candidate. The release workflow enables R8/resource shrinking and attaches SHA-256 checksums. Beta APKs are generated with an ephemeral CI debug signing key; installation over a different debug-signed build may require uninstalling the older APK. Back up important outputs before replacing an existing beta.
+
+Beta.18 fixes the first-use MP4/MP3 Save-button deadlock caused by checking lazy initialization completion instead of the native compatibility gate. It also synchronizes the yt-dlp updater with remote extraction and includes the TikTok-scoped request workaround. These changes do not make every extractor universally reliable; public access and upstream site changes still determine provider support.
 
 ## Automated gates
 
 The Android CI workflow runs:
 
-- `:app:testDebugUnitTest`
-- `:app:assembleDebug` to create one universal ARM APK
-- A packaging check that verifies both `arm64-v8a` and `armeabi-v7a` contain `libc++_shared.so` inside the APK
-- Unit tests that exercise safe replacement and validation of the staged native runtime
-- Artifact upload of the single UBAHVO universal APK
+- `:app:testDebugUnitTest` and locked Rust unit tests
+- `:app:assembleDebug` to create the universal APK and ABI-specific APKs
+- `:app:bundleRelease` to create an unsigned optimized AAB candidate
+- DEX/package verification and recursive ELF auditing, including native libraries embedded in nested ZIP payloads
+- Artifact upload of APK variants and the unsigned AAB candidate
 
-The main-branch release workflow repeats the tests/build gates before publishing a prerelease with one universal APK, a SHA-256 checksum, and release notes. x86/x86_64 emulator and Intel-device binaries are omitted. The workflow skips publication if that version’s GitHub release already exists.
+The main-branch release workflow repeats the tests/build gates before publishing the beta prerelease with universal and ABI-specific APKs, SHA-256 checksums, and release notes. The AAB remains unsigned until a permanent owner-controlled upload key is configured. The workflow skips publication if that version’s GitHub release already exists.
 
 ## Known release blockers / boundaries
 
