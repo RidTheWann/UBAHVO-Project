@@ -96,8 +96,10 @@ internal class ImageLinkDownloader(
                 var lastError: Exception? = null
                 for (candidate in candidates) {
                     coroutineContext.ensureActive()
+                    var openedCandidate: OpenedResponse? = null
                     try {
                         val imageResponse = openFollowingRedirects(processId, candidate, IMAGE_ACCEPT)
+                        openedCandidate = imageResponse
                         val imageBody = imageResponse.response.body
                         val imageInput = BufferedInputStream(imageBody.byteStream())
                         val imagePrefix = ImagePrefixReader.readPrefix(imageInput, HEADER_BYTES)
@@ -105,16 +107,21 @@ internal class ImageLinkDownloader(
                         if (imageType == "text/html" || imageType == "application/xhtml+xml" || looksLikeHtml(imagePrefix)) {
                             imageInput.close()
                             closeResponse(processId, imageResponse)
+                            openedCandidate = null
                             continue
                         }
                         chosen = stageImage(
                             processId, imageInput, imageResponse, imagePrefix, workDirectory, metadata.title,
                             coroutineContext, onProgress
                         )
+                        // stageImage closes the response in its finally block.
+                        openedCandidate = null
                         break
                     } catch (cancelled: CancellationException) {
+                        openedCandidate?.let { closeResponse(processId, it) }
                         throw cancelled
                     } catch (error: Exception) {
+                        openedCandidate?.let { closeResponse(processId, it) }
                         lastError = error
                     }
                 }
