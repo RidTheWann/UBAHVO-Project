@@ -28,8 +28,8 @@ Open the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Proj
 
 - **Universal APK — easiest:** `UBAHVO-0.1.0-beta.16-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
 - **Most current Android phones:** `UBAHVO-0.1.0-beta.16-arm64-v8a-debug.apk` is for 64-bit ARM phones.
-- **Older 32-bit ARM devices:** `UBAHVO-0.1.0-beta.14-armeabi-v7a-debug.apk` is for supported 32-bit ARM phones.
-- **Emulators / compatible Intel Android devices:** `UBAHVO-0.1.0-beta.14-x86_64-debug.apk` is for x86_64 Android environments.
+- **Older 32-bit ARM devices:** `UBAHVO-0.1.0-beta.16-armeabi-v7a-debug.apk` is for supported 32-bit ARM phones.
+- **Emulators / compatible Intel Android devices:** `UBAHVO-0.1.0-beta.16-x86_64-debug.apk` is for x86_64 Android environments.
 
 Prefer the ABI-specific APK when you know your device architecture; it avoids downloading unrelated native libraries. Install the one matching your device. The release also publishes a `SHA256SUMS.txt` file so each APK can be verified after download.
 
@@ -64,7 +64,7 @@ gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease
 ```
 
-Debug APKs are produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.14-universal-debug.apk` and ABI-specific `UBAHVO-0.1.0-beta.14-{arm64-v8a,armeabi-v7a,x86_64}-debug.apk` files. CI also produces an unsigned AAB candidate under `app/build/outputs/bundle/release/app-release.aab`.
+Debug APKs are produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.16-universal-debug.apk` and ABI-specific `UBAHVO-0.1.0-beta.16-{arm64-v8a,armeabi-v7a,x86_64}-debug.apk` files. CI also produces an unsigned AAB candidate under `app/build/outputs/bundle/release/app-release.aab`.
 
 ## Product roadmap
 
