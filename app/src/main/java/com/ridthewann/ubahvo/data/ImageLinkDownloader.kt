@@ -34,7 +34,7 @@ internal class ImageLinkException(val userMessage: String, cause: Throwable? = n
  */
 internal class ImageLinkDownloader(
     private val context: Context,
-    private val publisher: OutputPublisher,
+    private val publisher: ImageOutputPublisher,
     httpClientOverride: OkHttpClient? = null,
     private val urlNormalizer: (String) -> String? = MediaUrlValidator::normalize,
     private val maxImageBytes: Long = MAX_IMAGE_BYTES,
@@ -90,7 +90,7 @@ internal class ImageLinkDownloader(
                             "Beberapa posting carousel memerlukan dukungan khusus dan belum bisa diekstrak."
                     )
                 metadata.title?.let { onProgress(2f, 0L, "IMAGE_TITLE:$it") }
-                val candidates = metadata.imageUrls.mapNotNull { MediaUrlValidator.normalize(it) }
+                val candidates = metadata.imageUrls.mapNotNull { urlNormalizer(it) }
                     .distinct().take(MAX_IMAGE_CANDIDATES)
                 if (candidates.isEmpty()) {
                     throw ImageLinkException("Halaman tidak memberikan URL gambar HTTPS yang aman.")
