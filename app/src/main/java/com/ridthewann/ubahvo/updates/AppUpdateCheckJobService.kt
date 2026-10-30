@@ -7,34 +7,62 @@ import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
 import android.util.Log
+import java.util.concurrent.atomic.AtomicBoolean
 
 class AppUpdateCheckJobService : JobService() {
+    private class JobRun(val params: JobParameters) {
+        val cancelled = AtomicBoolean(false)
+
+        @Volatile
+        var worker: Thread? = null
+    }
+
     @Volatile
-    private var worker: Thread? = null
+    private var runningJob: JobRun? = null
 
     override fun onStartJob(params: JobParameters): Boolean {
-        worker = Thread({
+        val run = JobRun(params)
+        run.worker = Thread({
             try {
                 val update = AppUpdateChecker.checkForUpdate(applicationContext)
-                if (update != null && AppUpdateNotifications.show(applicationContext, update)) {
-                    AppUpdateChecker.markNotified(applicationContext, update.tag)
+                if (update != null) {
+                    // Serialize the final notification with onStopJob so a stopped job cannot
+                    // post a notification after the scheduler has asked it to shut down.
+                    synchronized(run) {
+                        if (!run.cancelled.get() &&
+                            AppUpdateNotifications.show(applicationContext, update)
+                        ) {
+                            AppUpdateChecker.markNotified(applicationContext, update.tag)
+                        }
+                    }
                 }
             } catch (error: Exception) {
-                Log.w(TAG, "Scheduled app-update check failed; it will retry on a later run", error)
+                if (!run.cancelled.get()) {
+                    Log.w(TAG, "Scheduled app-update check failed; it will retry on a later run", error)
+                }
             } finally {
-                jobFinished(params, false)
-                worker = null
+                // Android has already released the job when onStopJob is called. Do not call
+                // jobFinished for a run that the system has stopped.
+                synchronized(run) {
+                    if (!run.cancelled.get()) jobFinished(params, false)
+                }
+                if (runningJob === run) runningJob = null
             }
         }, "ubahvo-app-update-check").apply {
             isDaemon = true
-            start()
         }
+        runningJob = run
+        run.worker?.start()
         return true
     }
 
     override fun onStopJob(params: JobParameters): Boolean {
-        worker?.interrupt()
-        worker = null
+        val run = runningJob ?: return true
+        synchronized(run) {
+            run.cancelled.set(true)
+        }
+        run.worker?.interrupt()
+        if (runningJob === run) runningJob = null
         return true
     }
 
