@@ -10,7 +10,8 @@ import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.net.HttpURLConnection
+import java.net.HttpsURLConnection
+import java.net.Proxy
 import java.net.InetAddress
 import java.net.URI
 import java.net.URL
@@ -29,7 +30,12 @@ internal class ImageLinkDownloader(
     private val context: Context,
     private val publisher: OutputPublisher
 ) {
-    private data class OpenedResponse(val finalUrl: String, val connection: HttpURLConnection)
+    private data class ValidatedPublicUrl(
+        val url: String,
+        val host: String,
+        val addresses: List<InetAddress>
+    )
+    private data class OpenedResponse(val finalUrl: String, val connection: HttpsURLConnection)
     private data class StagedImage(val file: File, val format: RecognizedImageFormat, val displayName: String)
 
     private val activeConnections = ConcurrentHashMap<String, HttpURLConnection>()
@@ -63,9 +69,10 @@ internal class ImageLinkDownloader(
                             "Beberapa posting carousel memerlukan dukungan khusus dan belum bisa diekstrak."
                     )
                 metadata.title?.let { onProgress(2f, 0L, "IMAGE_TITLE:$it") }
-                val candidates = metadata.imageUrls.mapNotNull { candidate ->
-                    runCatching { validatePublicUrl(candidate) }.getOrNull()
-                }.distinct().take(MAX_IMAGE_CANDIDATES)
+                // DNS is resolved and pinned exactly once per request inside openFollowingRedirects.
+                // Do not resolve here and then resolve again when HttpURLConnection opens the socket.
+                val candidates = metadata.imageUrls.mapNotNull(MediaUrlValidator::normalize)
+                    .distinct().take(MAX_IMAGE_CANDIDATES)
                 if (candidates.isEmpty()) {
                     throw ImageLinkException("Halaman tidak memberikan URL gambar HTTPS yang aman.")
                 }
@@ -140,14 +147,24 @@ internal class ImageLinkDownloader(
         initialUrl: String,
         accept: String
     ): OpenedResponse {
-        var currentUrl = validatePublicUrl(initialUrl)
+        var current = validatePublicUrl(initialUrl)
         repeat(MAX_REDIRECTS + 1) { redirectCount ->
             currentCoroutineContext().ensureActive()
-            val connection = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+            val connection = (URL(current.url).openConnection(Proxy.NO_PROXY) as? HttpsURLConnection)
+                ?: throw ImageLinkException("Pengunduhan gambar hanya mengizinkan HTTPS.")
+            connection.apply {
                 instanceFollowRedirects = false
                 connectTimeout = CONNECT_TIMEOUT_MS
                 readTimeout = READ_TIMEOUT_MS
                 useCaches = true
+                // The socket factory connects to the exact DNS addresses validated below.
+                // TLS SNI and endpoint identification still use the original hostname.
+                sslSocketFactory = PinnedHttpsSocketFactory(
+                    hostname = current.host,
+                    addresses = current.addresses,
+                    connectTimeoutMs = CONNECT_TIMEOUT_MS,
+                    readTimeoutMs = READ_TIMEOUT_MS
+                )
                 setRequestProperty("User-Agent", USER_AGENT)
                 setRequestProperty("Accept", accept)
                 setRequestProperty("Accept-Encoding", "identity")
@@ -165,8 +182,8 @@ internal class ImageLinkDownloader(
                 if (location.isNullOrBlank() || redirectCount >= MAX_REDIRECTS) {
                     throw ImageLinkException("Tautan gambar terlalu banyak dialihkan atau redirect-nya tidak valid.")
                 }
-                currentUrl = try {
-                    validatePublicUrl(URI(currentUrl).resolve(location).toString())
+                current = try {
+                    validatePublicUrl(URI(current.url).resolve(location).toString())
                 } catch (error: Exception) {
                     throw ImageLinkException("Redirect menuju tautan yang tidak aman atau tidak didukung.", error)
                 }
@@ -176,7 +193,7 @@ internal class ImageLinkDownloader(
                 disconnect(processId, connection)
                 throw ImageLinkException("Sumber menolak permintaan gambar (HTTP " + status + ").")
             }
-            return OpenedResponse(currentUrl, connection)
+            return OpenedResponse(current.url, connection)
         }
         throw ImageLinkException("Tautan gambar dialihkan terlalu banyak kali.")
     }
@@ -291,34 +308,36 @@ internal class ImageLinkDownloader(
         return String(bytes, charset)
     }
 
-    private fun validatePublicUrl(input: String): String {
-        val normalized = MediaUrlValidator.normalize(input) ?: throw ImageLinkException("Gunakan tautan HTTPS publik yang valid.")
-        val host = URI(normalized).host ?: throw ImageLinkException("Tautan tidak memiliki host yang valid.")
+    private fun validatePublicUrl(input: String): ValidatedPublicUrl {
+        val normalized = MediaUrlValidator.normalize(input)
+            ?: throw ImageLinkException("Gunakan tautan HTTPS publik yang valid.")
+        val uri = try {
+            URI(normalized)
+        } catch (error: Exception) {
+            throw ImageLinkException("Tautan gambar tidak valid.", error)
+        }
+        val host = uri.host?.lowercase(Locale.ROOT)
+            ?: throw ImageLinkException("Tautan tidak memiliki host yang valid.")
+        if (uri.port != -1 && uri.port != 443) {
+            throw ImageLinkException("Tautan gambar hanya mengizinkan port HTTPS standar.")
+        }
         val addresses = try {
-            InetAddress.getAllByName(host)
+            InetAddress.getAllByName(host).toList()
         } catch (error: Exception) {
             throw ImageLinkException("Host gambar tidak dapat dijangkau.", error)
         }
-        if (addresses.isEmpty() || addresses.any(::isPrivateAddress)) {
-            throw ImageLinkException("Tautan menuju alamat jaringan lokal atau privat tidak diizinkan.")
+        if (addresses.isEmpty() || addresses.any { !PublicNetworkAddressPolicy.isGloballyReachable(it) }) {
+            throw ImageLinkException("Tautan menuju alamat jaringan nonpublik atau khusus yang tidak diizinkan.")
         }
-        return normalized
+        return ValidatedPublicUrl(normalized, host, addresses)
     }
 
-    private fun isPrivateAddress(address: InetAddress): Boolean {
-        if (address.isAnyLocalAddress || address.isLoopbackAddress ||
-            address.isLinkLocalAddress || address.isSiteLocalAddress || address.isMulticastAddress
-        ) return true
-        val bytes = address.address
-        return bytes.size == 16 && (bytes[0].toInt() and 0xFE) == 0xFC
-    }
-
-    private fun disconnect(processId: String, connection: HttpURLConnection) {
+    private fun disconnect(processId: String, connection: HttpsURLConnection) {
         activeConnections.remove(processId, connection)
         connection.disconnect()
     }
 
-    private fun disconnect(connection: HttpURLConnection) {
+    private fun disconnect(connection: HttpsURLConnection) {
         connection.disconnect()
     }
 
