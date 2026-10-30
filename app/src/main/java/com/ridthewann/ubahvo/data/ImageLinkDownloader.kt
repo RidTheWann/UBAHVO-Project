@@ -34,7 +34,11 @@ internal class ImageLinkException(val userMessage: String, cause: Throwable? = n
  */
 internal class ImageLinkDownloader(
     private val context: Context,
-    private val publisher: OutputPublisher
+    private val publisher: OutputPublisher,
+    httpClientOverride: OkHttpClient? = null,
+    private val urlNormalizer: (String) -> String? = MediaUrlValidator::normalize,
+    private val maxImageBytes: Long = MAX_IMAGE_BYTES,
+    private val maxHtmlBytes: Long = MAX_HTML_BYTES
 ) {
     private data class OpenedResponse(
         val finalUrl: String,
@@ -45,7 +49,7 @@ internal class ImageLinkDownloader(
 
     private val activeCalls = ConcurrentHashMap<String, Call>()
 
-    private val httpClient: OkHttpClient = OkHttpClient.Builder()
+    private val httpClient: OkHttpClient = httpClientOverride ?: OkHttpClient.Builder()
         .dns(PublicOnlyDns())
         .proxy(Proxy.NO_PROXY)
         .connectTimeout(CONNECT_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
@@ -246,8 +250,8 @@ internal class ImageLinkDownloader(
                         "Tautan ini bukan gambar raster yang didukung. SVG dan file non-gambar tidak disimpan sebagai wallpaper."
                     )
                 val expectedBytes = response.response.body.contentLength()
-                if (expectedBytes > MAX_IMAGE_BYTES) {
-                    throw ImageLinkException("Gambar melebihi batas " + (MAX_IMAGE_BYTES / (1024 * 1024)) + " MB untuk satu file.")
+                if (expectedBytes > maxImageBytes) {
+                    throw ImageLinkException("Gambar melebihi batas " + (maxImageBytes / (1024 * 1024)) + " MB untuk satu file.")
                 }
                 val available = workDirectory.usableSpace
                 if (available <= MINIMUM_FREE_SPACE_BYTES ||
@@ -266,7 +270,7 @@ internal class ImageLinkDownloader(
                             val count = stream.read(buffer)
                             if (count < 0) break
                             totalBytes += count
-                            if (totalBytes > MAX_IMAGE_BYTES ||
+                            if (totalBytes > maxImageBytes ||
                                 totalBytes > (available - MINIMUM_FREE_SPACE_BYTES).coerceAtLeast(0L)
                             ) {
                                 throw ImageLinkException("Gambar terlalu besar atau ruang sementara tidak mencukupi.")
@@ -308,14 +312,14 @@ internal class ImageLinkDownloader(
         coroutineContext: kotlin.coroutines.CoroutineContext
     ): String {
         input.use { stream ->
-            if (expectedBytes > MAX_HTML_BYTES) throw ImageLinkException("Halaman terlalu besar untuk dianalisis dengan aman.")
+            if (expectedBytes > maxHtmlBytes) throw ImageLinkException("Halaman terlalu besar untuk dianalisis dengan aman.")
             val output = ByteArrayOutputStream()
             val buffer = ByteArray(16 * 1024)
             while (true) {
                 coroutineContext.ensureActive()
                 val count = stream.read(buffer)
                 if (count < 0) break
-                if (output.size().toLong() + count > MAX_HTML_BYTES) {
+                if (output.size().toLong() + count > maxHtmlBytes) {
                     throw ImageLinkException("Halaman terlalu besar untuk dianalisis dengan aman.")
                 }
                 output.write(buffer, 0, count)
@@ -341,7 +345,7 @@ internal class ImageLinkDownloader(
     }
 
     private fun validatePublicUrl(input: String): String =
-        MediaUrlValidator.normalize(input)
+        urlNormalizer(input)
             ?: throw ImageLinkException("Gunakan tautan HTTPS publik yang valid.")
 
     private fun closeResponse(processId: String, opened: OpenedResponse) {
