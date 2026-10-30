@@ -122,7 +122,11 @@ internal object AppUpdateChecker {
             val version = parseVersion(tag) ?: continue
             val releaseUrl = validateReleaseUrl(release.optString("html_url", ""), tag) ?: continue
             val assets = release.optJSONArray("assets") ?: continue
-            if (!hasSupportedArm64Apk(assets, tag) || version <= current) continue
+            val assetNamesAndSizes = (0 until assets.length()).mapNotNull { assetIndex ->
+                val asset = assets.optJSONObject(assetIndex) ?: return@mapNotNull null
+                asset.optString("name", "") to asset.optLong("size", 0L)
+            }
+            if (!hasSupportedArm64Apk(assetNamesAndSizes, tag) || version <= current) continue
 
             val info = AppUpdateInfo(tag, tag.removePrefix("v"), releaseUrl)
             if (newest == null || version > newest.first) newest = version to info
@@ -135,18 +139,18 @@ internal object AppUpdateChecker {
      * Accept the versioned beta debug APK and the versioned production APK naming convention.
      * A tag-specific exact name prevents an unrelated/stale ARM64 APK from advertising an update.
      */
-    internal fun hasSupportedArm64Apk(assets: JSONArray, tag: String): Boolean {
+    internal fun hasSupportedArm64Apk(
+        assetNamesAndSizes: Iterable<Pair<String, Long>>,
+        tag: String
+    ): Boolean {
         val version = tag.removePrefix("v")
         val acceptedNames = setOf(
             "UBAHVO-$version-arm64-v8a-debug.apk",
             "UBAHVO-$version-arm64-v8a.apk",
             "UBAHVO-arm64-v8a.apk"
         )
-        return (0 until assets.length()).any { index ->
-            val asset = assets.optJSONObject(index) ?: return@any false
-            val name = asset.optString("name", "")
-            asset.optLong("size", 0L) > 0L &&
-                acceptedNames.any { it.equals(name, ignoreCase = true) }
+        return assetNamesAndSizes.any { (name, size) ->
+            size > 0L && acceptedNames.any { it.equals(name, ignoreCase = true) }
         }
     }
 
