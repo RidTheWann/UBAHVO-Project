@@ -58,6 +58,21 @@ class NativeMediaStartupTest {
     }
 
     @Test
+    fun nonFatalErrorsOutsideLinkageErrorAreContained() {
+        val failure = AssertionError("synthetic-native-wrapper-error")
+
+        val result = NativeMediaStartup.initialize(4096L) { setStage ->
+            setStage("Inisialisasi FFmpeg")
+            throw failure
+        }
+
+        assertFalse(result.engineReady)
+        assertTrue(result.errorMessage!!.contains("Aplikasi tetap bisa dibuka"))
+        assertEquals("Inisialisasi FFmpeg", result.failureStage)
+        assertSame(failure, result.failure)
+    }
+
+    @Test
     fun ordinaryInitializationFailureIsReportedInsteadOfEscaping() {
         val failure = IllegalStateException("test-init-failure")
 
