@@ -81,7 +81,22 @@ class ConverterViewModel(
     private var autoUpdateJob: Job? = null
 
     init {
-        autoUpdateYtDlpIfDue()
+        try {
+            autoUpdateYtDlpIfDue()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            // Automatic support updates are optional; a synchronous preference/scheduler error
+            // must not abort ViewModel construction while the main screen is being created.
+            if (error is VirtualMachineError || error is ThreadDeath) throw error
+            android.util.Log.e("UBAHVO", "Could not start the optional automatic yt-dlp update check", error)
+            _uiState.update {
+                it.copy(
+                    isAutoUpdatingYtDlp = false,
+                    ytdlpUpdateMessage = "Pemeriksaan otomatis belum bisa dimulai. Dukungan tautan yang tersedia tetap dapat dicoba."
+                )
+            }
+        }
     }
 
     /**
