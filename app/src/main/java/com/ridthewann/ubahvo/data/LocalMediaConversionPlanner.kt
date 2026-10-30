@@ -105,6 +105,9 @@ internal object LocalMediaConversionPlanner {
                 }
                 args += listOf("-movflags", "+faststart", "-f", "mp4")
             }
+            OutputMode.IMAGE -> throw IllegalArgumentException(
+                "Image output is supported for web links only, not local audio/video conversion."
+            )
         }
         args += listOf("-progress", "pipe:1", "-stats_period", "0.5", "-nostats", outputPath)
         return args

@@ -13,6 +13,7 @@ class OutputPublisher(private val context: Context) {
     fun publish(
         source: File,
         mimeType: String,
+        displayNameOverride: String? = null,
         cancellationCheck: () -> Unit = {}
     ): PublishedOutput {
         cancellationCheck()
@@ -20,7 +21,7 @@ class OutputPublisher(private val context: Context) {
             throw IOException("The converted output file is missing or empty.")
         }
 
-        val displayName = safeDisplayName(source.name)
+        val displayName = safeDisplayName(displayNameOverride?.takeIf { it.isNotBlank() } ?: source.name)
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
@@ -155,6 +156,13 @@ class OutputPublisher(private val context: Context) {
         when (displayName.substringAfterLast('.', "").lowercase()) {
             "mp3" -> "audio/mpeg"
             "mp4" -> "video/mp4"
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "gif" -> "image/gif"
+            "avif" -> "image/avif"
+            "heic", "heif" -> "image/heic"
+            "bmp" -> "image/bmp"
             else -> "application/octet-stream"
         }
 

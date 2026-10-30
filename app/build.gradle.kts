@@ -18,8 +18,8 @@ android {
         applicationId = "com.ridthewann.ubahvo"
         minSdk = 29
         targetSdk = 36
-        versionCode = 15
-        versionName = "0.1.0-beta.15"
+        versionCode = 16
+        versionName = "0.1.0-beta.16"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Keep only the locales used by the current Indonesian UI and English fallback.
         resourceConfigurations += setOf("en", "id")
@@ -294,6 +294,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
     implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
