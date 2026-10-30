@@ -1,5 +1,7 @@
 package com.ridthewann.ubahvo.core
 
+import kotlinx.coroutines.CancellationException
+
 /**
  * Keeps native dependency initialization from taking down the launcher activity when a wrapper
  * fails to link on a particular Android build. Fatal VM errors are deliberately not swallowed.
@@ -35,7 +37,13 @@ object NativeMediaStartup {
                 failure = error,
                 failureStage = stage
             )
-        } catch (error: Exception) {
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            // Native wrappers and reflection-based ZIP registries can fail with Errors that are
+            // neither LinkageError nor Exception (for example AssertionError). Keep those
+            // non-fatal initialization failures from escaping the startup coroutine.
+            if (error is VirtualMachineError || error is ThreadDeath) throw error
             Result(
                 engineReady = false,
                 errorMessage = "$INITIALIZATION_FAILURE_MESSAGE\nTahap terakhir: $stage.",
