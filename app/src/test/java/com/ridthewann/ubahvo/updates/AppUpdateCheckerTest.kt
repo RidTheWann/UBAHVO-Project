@@ -32,37 +32,43 @@ class AppUpdateCheckerTest {
     @Test
     fun betaReleaseDebugArm64AssetIsAccepted() {
         val assets = listOf("UBAHVO-0.1.0-beta.17-arm64-v8a-debug.apk" to 12_345L)
-        assertTrue(AppUpdateChecker.hasSupportedArm64Apk(assets, "v0.1.0-beta.17"))
+        assertTrue(AppUpdateChecker.hasSupportedApkAsset(assets, "v0.1.0-beta.17"))
     }
 
     @Test
     fun productionArm64AssetWithoutDebugSuffixIsAccepted() {
         val assets = listOf("UBAHVO-0.1.0-arm64-v8a.apk" to 12_345L)
-        assertTrue(AppUpdateChecker.hasSupportedArm64Apk(assets, "0.1.0"))
+        assertTrue(AppUpdateChecker.hasSupportedApkAsset(assets, "0.1.0"))
     }
 
     @Test
-    fun versionlessProductionArm64AssetIsAccepted() {
-        val assets = listOf("UBAHVO-arm64-v8a.apk" to 12_345L)
-        assertTrue(AppUpdateChecker.hasSupportedArm64Apk(assets, "0.1.0"))
+    fun productionUniversalApkIsAcceptedForAllSupportedAbis() {
+        val assets = listOf("UBAHVO-0.1.0-universal.apk" to 15_000L)
+        assertTrue(AppUpdateChecker.hasSupportedApkAsset(assets, "0.1.0"))
     }
 
     @Test
-    fun rejectsUnrelatedWrongVersionOrEmptyArm64Assets() {
+    fun betaUniversalApkIsAccepted() {
+        val assets = listOf("UBAHVO-0.1.0-beta.17-universal-debug.apk" to 15_000L)
+        assertTrue(AppUpdateChecker.hasSupportedApkAsset(assets, "v0.1.0-beta.17"))
+    }
+
+    @Test
+    fun rejectsUnrelatedWrongVersionOrEmptyApkAssets() {
         val assets = listOf(
             "OTHER-0.1.0-arm64-v8a.apk" to 12_345L,
             "UBAHVO-0.1.0-beta.16-arm64-v8a.apk" to 12_345L,
             "UBAHVO-0.1.0-arm64-v8a.apk" to 0L
         )
-        assertFalse(AppUpdateChecker.hasSupportedArm64Apk(assets, "0.1.0"))
+        assertFalse(AppUpdateChecker.hasSupportedApkAsset(assets, "0.1.0"))
     }
 
     @Test
     fun assetMatchingIsCaseInsensitiveButRequiresExactName() {
         val accepted = listOf("ubahvo-0.1.0-arm64-v8a.apk" to 100L)
         val lookalike = listOf("UBAHVO-0.1.0-arm64-v8a.apk.attacker" to 100L)
-        assertTrue(AppUpdateChecker.hasSupportedArm64Apk(accepted, "0.1.0"))
-        assertFalse(AppUpdateChecker.hasSupportedArm64Apk(lookalike, "0.1.0"))
+        assertTrue(AppUpdateChecker.hasSupportedApkAsset(accepted, "0.1.0"))
+        assertFalse(AppUpdateChecker.hasSupportedApkAsset(lookalike, "0.1.0"))
     }
 
 }
