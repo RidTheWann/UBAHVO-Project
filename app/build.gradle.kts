@@ -301,7 +301,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     // Maintained HTTP transport with a custom DNS hook for SSRF-safe public image fetching.
-    implementation("com.squareup.okhttp3:okhttp:5.5.1")
+    implementation("com.squareup.okhttp3:okhttp:5.4.0")
 
     // Keep Jackson modules aligned and current; updater code parses untrusted remote release metadata.
     implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
