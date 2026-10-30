@@ -66,7 +66,9 @@ class PublicNetworkAddressPolicyTest {
             "2001:2::1",
             "2001:db8::1",
             "2002::1",
+            "3f00::1",
             "3fff::1",
+            "5f00::1",
             "fc00::1",
             "fe80::1",
             "ff02::1"
