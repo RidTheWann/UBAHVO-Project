@@ -198,6 +198,35 @@ jobs:
           fi
           echo "Apache Commons Compress reflection constructor is present in the minified APK."
 
+      - name: Test and audit native ELF 16 KB compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          NDK_ROOT="$SDK_ROOT/ndk/27.2.12479018"
+          READELF="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          if [[ ! -x "$READELF" ]]; then
+            echo "NDK llvm-readelf is missing: $READELF" >&2
+            exit 1
+          fi
+
+          VERSION="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+          ARTIFACTS=(
+            "app/build/outputs/apk/debug/UBAHVO-${VERSION}-universal-debug.apk"
+            "app/build/outputs/apk/debug/UBAHVO-${VERSION}-arm64-v8a-debug.apk"
+            "app/build/outputs/apk/debug/UBAHVO-${VERSION}-armeabi-v7a-debug.apk"
+            "app/build/outputs/apk/debug/UBAHVO-${VERSION}-x86_64-debug.apk"
+            "app/build/outputs/bundle/release/app-release.aab"
+          )
+          python3 scripts/verify_native_16k.py --report-only --readelf "$READELF" "${ARTIFACTS[@]}" \
+            | tee /tmp/ubahvo-native-16k-audit.txt
+          {
+            echo "### Native ELF 16 KB page-size audit (report-only)"
+            sed 's/^/    /' /tmp/ubahvo-native-16k-audit.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload UBAHVO universal APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
