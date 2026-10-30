@@ -125,8 +125,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
             startupState.value = StartupUiState(
-                message = if (prepared.engineReady) prepared.componentMessage
-                    else "Menyelesaikan antarmuka UBAHVO…",
+                message = prepared.componentMessage,
                 showProgress = true
             )
             delay(250)
