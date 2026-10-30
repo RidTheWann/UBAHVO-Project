@@ -465,10 +465,7 @@ fun ConverterScreen(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
                     onClick = viewModel::start,
-                    enabled = (state.engineReady || (state.inputSource == InputSource.LINK && state.mode == OutputMode.IMAGE)) &&
-                        !state.isBusy && !state.isUpdatingYtDlp &&
-                        (if (state.inputSource == InputSource.LINK) state.url.isNotBlank()
-                        else state.localFileUri != null),
+                    enabled = ConverterActionPolicy.canStart(state),
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 56.dp),
