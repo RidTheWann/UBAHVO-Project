@@ -3,6 +3,7 @@
 ## 0.1.0-beta.17
 
 - Harden the beta.16 startup transition: recoverable native/JVM initialization failures now leave the main interface available in limited mode rather than abandoning the foreground startup flow.
+- Defer Python/yt-dlp/FFmpeg package extraction and native media setup until the first MP4/MP3 request. App launch now performs only a lightweight memory-page compatibility check, so the main UI and public image path do not wait for native package initialization.
 - Keep MP4/MP3 conversion disabled when the native media engine cannot be safely initialized; non-native screens and the public image path remain available.
 - Make optional component updates, release checks, and background JobScheduler registration best-effort so recoverable updater/runtime errors do not take down the converter.
 - Guard ViewModel construction against recoverable synchronous failures while starting the optional automatic yt-dlp update check, so a preference/scheduler error cannot prevent the main screen from being created.
