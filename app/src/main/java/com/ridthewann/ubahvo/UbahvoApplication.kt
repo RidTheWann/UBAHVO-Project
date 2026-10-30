@@ -144,9 +144,13 @@ class UbahvoApplication : Application() {
         synchronized(initializationLock) {
             if (compatibilityChecked) return
             onStage("Memeriksa kompatibilitas perangkat…")
-            val detectedPageSize = runCatching {
+            val detectedPageSize = try {
                 Os.sysconf(OsConstants._SC_PAGE_SIZE)
-            }.getOrNull()
+            } catch (error: Throwable) {
+                if (error is VirtualMachineError || error is ThreadDeath) throw error
+                Log.w(TAG, "Could not read the device memory page size; media conversion will remain disabled", error)
+                null
+            }
             pageSizeBytes = detectedPageSize
             engineSupported = NativeMediaCompatibility.supportsBundledFfmpeg(detectedPageSize)
             if (!engineSupported) {
