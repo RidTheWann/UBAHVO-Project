@@ -10,6 +10,7 @@ import com.ridthewann.ubahvo.data.StableYtDlpUpdater
 import com.ridthewann.ubahvo.data.YtDlpAutoUpdatePolicy
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -109,7 +110,10 @@ class UbahvoApplication : Application() {
                             "Komponen media sudah terbaru" +
                                 (version?.let { " ($it)" } ?: "") + "."
                         }
-                    } catch (error: Exception) {
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        if (error is VirtualMachineError || error is ThreadDeath) throw error
                         Log.w(TAG, "Automatic media-component update failed; existing components are retained", error)
                         componentMessage =
                             "Pembaruan komponen belum berhasil. UBAHVO tetap dibuka dengan komponen yang tersedia."
