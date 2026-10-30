@@ -4,11 +4,13 @@ import android.content.ContextWrapper
 import java.io.File
 import java.net.URI
 import java.net.Proxy
+import java.util.concurrent.TimeUnit
 import okhttp3.Dns
 import okhttp3.OkHttpClient
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import okio.Buffer
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -149,6 +151,35 @@ class ImageLinkDownloaderHttpTest {
                     runBlocking {
                         downloader.download(server.url("/truncated.jpg").toString(), "truncated") { _, _, _ -> }
                     }
+                }
+                assertNoStagedFiles(cache)
+            }
+        }
+    }
+
+
+    @Test
+    fun cancellationStopsTheInFlightHttpCallAndRemovesTheWorkDirectory() {
+        MockWebServer().use { server ->
+            server.start()
+            server.enqueue(
+                MockResponse.Builder()
+                    .addHeader("Content-Type", "image/jpeg")
+                    .bodyDelay(10, TimeUnit.SECONDS)
+                    .body(Buffer().write(byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())))
+                    .build()
+            )
+            withCacheDirectory { cache ->
+                val downloader = createDownloader(server, cache)
+                runBlocking {
+                    val job = launch {
+                        downloader.download(server.url("/slow.jpg").toString(), "cancel-http") { _, _, _ -> }
+                    }
+                    assertFalse("The mock server should receive the request.", server.takeRequest(5, TimeUnit.SECONDS) == null)
+                    job.cancel()
+                    downloader.cancel("cancel-http")
+                    job.join()
+                    assertTrue("The coroutine should finish as cancelled.", job.isCancelled)
                 }
                 assertNoStagedFiles(cache)
             }
