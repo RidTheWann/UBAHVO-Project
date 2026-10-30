@@ -221,10 +221,9 @@ class ConverterViewModel(
     }
 
     /**
-     * Keep supported video links current automatically without making app launch or the Save
-     * action wait for a network request. Successful checks run daily; failures retry after six
-     * hours. The updater installs verified bytes atomically, so an active download keeps using a
-     * complete script even if the next version is installed in the background.
+     * Keep supported video links current without blocking app launch. Successful checks run daily
+     * and failures retry after six hours; a due check is awaited at the remote-download boundary
+     * so the first extraction cannot race the updater. The verified script is installed atomically.
      */
     private fun autoUpdateYtDlpIfDue() {
         if (!application.engineReady || autoUpdateJob?.isActive == true) return
