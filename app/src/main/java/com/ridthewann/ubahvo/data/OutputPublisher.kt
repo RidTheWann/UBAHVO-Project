@@ -9,12 +9,23 @@ import android.provider.MediaStore
 import java.io.File
 import java.io.IOException
 
-class OutputPublisher(private val context: Context) {
+interface ImageOutputPublisher {
     fun publish(
         source: File,
         mimeType: String,
         displayNameOverride: String? = null,
         cancellationCheck: () -> Unit = {}
+    ): PublishedOutput
+
+    fun discard(uri: Uri)
+}
+
+class OutputPublisher(private val context: Context) : ImageOutputPublisher {
+    override fun publish(
+        source: File,
+        mimeType: String,
+        displayNameOverride: String?,
+        cancellationCheck: () -> Unit
     ): PublishedOutput {
         cancellationCheck()
         if (!source.isFile || source.length() <= 0L) {
@@ -72,7 +83,7 @@ class OutputPublisher(private val context: Context) {
     }
 
     /** Delete a just-published output if cancellation wins the race immediately after publication. */
-    fun discard(uri: Uri) {
+    override fun discard(uri: Uri) {
         runCatching { context.contentResolver.delete(uri, null, null) }
     }
 
