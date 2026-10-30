@@ -18,8 +18,8 @@ android {
         applicationId = "com.ridthewann.ubahvo"
         minSdk = 29
         targetSdk = 36
-        versionCode = 16
-        versionName = "0.1.0-beta.16"
+        versionCode = 17
+        versionName = "0.1.0-beta.17"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Keep only the locales used by the current Indonesian UI and English fallback.
         resourceConfigurations += setOf("en", "id")
