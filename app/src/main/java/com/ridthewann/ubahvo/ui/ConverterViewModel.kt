@@ -522,8 +522,10 @@ class ConverterViewModel(
 
     fun cancel() {
         val processId = activeProcessId
-        if (processId != null) repository.cancel(processId)
+        // Mark the coroutine cancelled first so an I/O exception from the transport is
+        // observed as cancellation rather than being rendered as a download failure.
         activeJob?.cancel()
+        if (processId != null) repository.cancel(processId)
         activeJob = null
         activeProcessId = null
         _uiState.update {
