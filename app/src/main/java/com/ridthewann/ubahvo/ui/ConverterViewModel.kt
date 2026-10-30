@@ -14,6 +14,7 @@ import com.ridthewann.ubahvo.data.DownloadOutputParser
 import com.ridthewann.ubahvo.data.YtDlpAutoUpdatePolicy
 import com.ridthewann.ubahvo.data.RecentOutput
 import com.ridthewann.ubahvo.data.MediaUrlValidator
+import com.ridthewann.ubahvo.data.MediaSourceDetector
 import com.ridthewann.ubahvo.data.LocalMediaConversionException
 import com.ridthewann.ubahvo.data.ImageLinkException
 import kotlinx.coroutines.CancellationException
@@ -372,6 +373,7 @@ class ConverterViewModel(
             return
         }
 
+        val sourceLabel = normalizedUrl?.let(MediaSourceDetector::displayName) ?: "sumber media"
         val processId = UUID.randomUUID().toString()
         activeProcessId = processId
         activeJob = viewModelScope.launch {
@@ -384,7 +386,7 @@ class ConverterViewModel(
                     stageMessage = when {
                         snapshot.inputSource == InputSource.LOCAL_FILE -> "Menyiapkan file media…"
                         snapshot.mode == OutputMode.IMAGE -> "Memeriksa tautan gambar…"
-                        else -> "Menghubungkan ke sumber media…"
+                        else -> "Menghubungkan ke $sourceLabel…"
                     },
                     videoTitle = null,
                     errorMessage = null,
@@ -443,9 +445,9 @@ class ConverterViewModel(
                                         if (progress >= 95f) "Menyimpan hasil media…" else "Mengonversi file media…"
                                     snapshot.mode == OutputMode.IMAGE -> "Menyimpan gambar dari tautan…"
                                     parsedTitle != null && snapshot.mode == OutputMode.MP3 ->
-                                        "Tautan terdeteksi — menyiapkan audio…"
-                                    parsedTitle != null -> "Tautan terdeteksi — menyiapkan video…"
-                                    current.videoTitle == null -> "Memeriksa tautan dan memilih kualitas…"
+                                        "Tautan $sourceLabel terdeteksi — menyiapkan audio…"
+                                    parsedTitle != null -> "Tautan $sourceLabel terdeteksi — menyiapkan video…"
+                                    current.videoTitle == null -> "Memeriksa $sourceLabel dan memilih kualitas…"
                                     snapshot.mode == OutputMode.MP3 -> "Mengambil audio dan menyiapkan MP3…"
                                     else -> "Mengunduh dan menyiapkan MP4…"
                                 },
