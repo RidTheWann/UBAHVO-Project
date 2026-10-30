@@ -465,7 +465,23 @@ class ConverterViewModel(
                     // Start the optional support-component update only after the native runtime
                     // has initialized successfully. It runs in the background and does not block
                     // the current conversion.
-                    autoUpdateYtDlpIfDue()
+                    try {
+                        autoUpdateYtDlpIfDue()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        if (error is VirtualMachineError || error is ThreadDeath) throw error
+                        android.util.Log.e(
+                            "UBAHVO",
+                            "Could not start the optional yt-dlp update after lazy engine initialization",
+                            error
+                        )
+                        _uiState.update {
+                            it.copy(
+                                ytdlpUpdateMessage = "Pemeriksaan otomatis belum bisa dimulai. Konversi tetap dapat dilanjutkan."
+                            )
+                        }
+                    }
                 }
 
                 var lastUiProgress = -1f
