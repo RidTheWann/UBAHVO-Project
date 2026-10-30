@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ImageLinkDownloaderHttpTest {
@@ -175,7 +176,11 @@ class ImageLinkDownloaderHttpTest {
                     val job = launch {
                         downloader.download(server.url("/slow.jpg").toString(), "cancel-http") { _, _, _ -> }
                     }
-                    assertFalse("The mock server should receive the request.", server.takeRequest(5, TimeUnit.SECONDS) == null)
+                    val requestDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+                    while (server.requestCount == 0 && System.nanoTime() < requestDeadline) {
+                        Thread.sleep(10)
+                    }
+                    assertEquals("The mock server should receive the request.", 1, server.requestCount)
                     job.cancel()
                     downloader.cancel("cancel-http")
                     job.join()
