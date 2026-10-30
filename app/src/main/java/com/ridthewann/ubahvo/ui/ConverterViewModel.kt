@@ -48,6 +48,7 @@ data class ConverterUiState(
     val outputMimeType: String = "video/mp4",
     val lastLogLine: String? = null,
     val engineReady: Boolean = false,
+    val engineSupported: Boolean = false,
     val isUpdatingYtDlp: Boolean = false,
     val isAutoUpdatingYtDlp: Boolean = false,
     val ytdlpVersion: String? = null,
@@ -63,13 +64,14 @@ class ConverterViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         ConverterUiState(
-            stageMessage = if (application.engineReady) {
+            stageMessage = if (application.engineSupported || application.engineReady) {
                 "Tempel tautan media untuk memulai."
             } else {
-                "Fitur simpan belum tersedia di perangkat ini."
+                "Fitur konversi media belum tersedia di perangkat ini."
             },
             errorMessage = application.engineError,
-            engineReady = application.engineReady
+            engineReady = application.engineReady,
+            engineSupported = application.engineSupported
         )
     )
     val uiState: StateFlow<ConverterUiState> = _uiState.asStateFlow()
@@ -371,11 +373,13 @@ class ConverterViewModel(
         val snapshot = _uiState.value
         if (snapshot.isBusy || snapshot.isUpdatingYtDlp) return
 
-        if (snapshot.mode != OutputMode.IMAGE && !application.engineReady) {
+        if (snapshot.mode != OutputMode.IMAGE && !application.engineSupported) {
             _uiState.update {
                 it.copy(
+                    engineReady = false,
+                    engineSupported = false,
                     errorMessage = application.engineError
-                        ?: "Fitur media belum siap. Tutup lalu buka kembali UBAHVO. Jika masalah berlanjut, coba lagi setelah pembaruan."
+                        ?: "Konversi MP4/MP3 belum didukung pada konfigurasi perangkat ini."
                 )
             }
             return
@@ -426,6 +430,44 @@ class ConverterViewModel(
             }
 
             try {
+                if (snapshot.mode != OutputMode.IMAGE && !application.engineReady) {
+                    _uiState.update {
+                        it.copy(
+                            isProgressIndeterminate = true,
+                            stageMessage = "Menyiapkan komponen media untuk pertama kali…"
+                        )
+                    }
+                    val prepared = application.ensureMediaEngineInitialized { message ->
+                        _uiState.update {
+                            it.copy(
+                                isProgressIndeterminate = true,
+                                stageMessage = message,
+                                errorMessage = null
+                            )
+                        }
+                    }
+                    _uiState.update {
+                        it.copy(
+                            engineReady = prepared.engineReady,
+                            engineSupported = application.engineSupported,
+                            isProgressIndeterminate = false,
+                            stageMessage = prepared.componentMessage,
+                            errorMessage = prepared.errorMessage
+                        )
+                    }
+                    if (!prepared.engineReady) {
+                        throw LocalMediaConversionException(
+                            prepared.errorMessage
+                                ?: "Komponen media tidak dapat disiapkan pada perangkat ini.",
+                            null
+                        )
+                    }
+                    // Start the optional support-component update only after the native runtime
+                    // has initialized successfully. It runs in the background and does not block
+                    // the current conversion.
+                    autoUpdateYtDlpIfDue()
+                }
+
                 var lastUiProgress = -1f
                 var lastUiEta = 0L
                 val onProgress: (Float, Long, String) -> Unit = { progress, eta, line ->
