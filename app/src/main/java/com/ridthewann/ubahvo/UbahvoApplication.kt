@@ -42,6 +42,17 @@ class UbahvoApplication : Application() {
         // Native startup is deferred so the launcher can display the welcome animation first.
     }
 
+    /**
+     * Leaves the non-native app usable if an unexpected startup-stage failure escapes the
+     * guarded native initializer. The media engine stays disabled until a later app process.
+     */
+    fun markMediaEngineUnavailable(error: Throwable) {
+        engineReady = false
+        engineError = "Komponen media gagal disiapkan. Aplikasi tetap bisa dibuka, tetapi fitur MP4/MP3 dinonaktifkan sampai aplikasi dibuka ulang setelah pembaruan."
+        initializationComplete = true
+        Log.e(TAG, "Media engine marked unavailable after startup failure", error)
+    }
+
     suspend fun prepareStartup(onStage: (String) -> Unit): StartupPreparationResult =
         withContext(Dispatchers.IO) {
             synchronized(initializationLock) {
