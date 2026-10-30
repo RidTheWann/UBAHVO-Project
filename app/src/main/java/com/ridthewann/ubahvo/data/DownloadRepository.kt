@@ -101,6 +101,11 @@ class DownloadRepository(context: Context) {
             addOption("--no-playlist")
             addOption("--no-warnings")
             addOption("--no-colors")
+            // TikTok began rejecting some default extractor request fingerprints in September 2026.
+            // Keep the documented browser User-Agent workaround scoped to TikTok hosts only.
+            MediaExtractorRequestPolicy.userAgentFor(url)?.let { userAgent ->
+                addOption("--user-agent", userAgent)
+            }
             addOption("--newline")
             // Print the title during this same extraction, avoiding a separate --dump-json run.
             addOption("--print", "before_dl:UBAHVO_TITLE:%(title)s")
