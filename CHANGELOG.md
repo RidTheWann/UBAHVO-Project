@@ -11,6 +11,7 @@
 - Replace the image fetcher's check-then-connect path with OkHttp 5.4.0 and a public-only DNS resolver that validates and returns the exact address set used for routing. Keep standard TLS hostname/certificate verification and disable proxies and automatic redirects.
 - Revalidate each image redirect, reject mixed or non-global IPv4/IPv6 DNS answers (including CGNAT, benchmarking, documentation, and reserved ranges), cap HTML/image response sizes and request duration, reject partial responses, and preserve cancellation/cleanup behavior.
 - Add regression tests for social share URLs, provider recognition, IPv4/IPv6 address policy, mixed/empty DNS answers, and public-only DNS resolution.
+- Add regression coverage showing recoverable startup errors use the limited-mode fallback while `VirtualMachineError` and `ThreadDeath` are rethrown.
 - Keep Android compile SDK 36 / AGP 8.13.2 compatibility by pinning OkHttp 5.4.0; no new native binaries or permissions are added.
 
 ## 0.1.0-beta.16
