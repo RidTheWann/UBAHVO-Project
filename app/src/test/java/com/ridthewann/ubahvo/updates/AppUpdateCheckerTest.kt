@@ -71,4 +71,88 @@ class AppUpdateCheckerTest {
         assertFalse(AppUpdateChecker.hasSupportedApkAsset(lookalike, "0.1.0"))
     }
 
+
+    @Test
+    fun parsesBetaUniversalReleaseFromGitHubJson() {
+        val json = """
+            [{
+              "tag_name": "v0.1.0-beta.17",
+              "draft": false,
+              "html_url": "https://github.com/RidTheWann/UBAHVO-Project/releases/tag/v0.1.0-beta.17",
+              "assets": [{"name":"UBAHVO-0.1.0-beta.17-universal-debug.apk","size":15000000}]
+            }]
+        """.trimIndent()
+
+        assertTrue(
+            AppUpdateChecker.findNewerRelease(json, "0.1.0-beta.16") ==
+                AppUpdateInfo(
+                    "v0.1.0-beta.17",
+                    "0.1.0-beta.17",
+                    "https://github.com/RidTheWann/UBAHVO-Project/releases/tag/v0.1.0-beta.17"
+                )
+        )
+    }
+
+    @Test
+    fun selectsStableReleaseOverBetaWhenBothAreNewer() {
+        val json = """
+            [
+              {
+                "tag_name":"v0.1.0-beta.19",
+                "draft":false,
+                "html_url":"https://github.com/RidTheWann/UBAHVO-Project/releases/tag/v0.1.0-beta.19",
+                "assets":[{"name":"UBAHVO-0.1.0-beta.19-arm64-v8a-debug.apk","size":1000}]
+              },
+              {
+                "tag_name":"v0.1.0",
+                "draft":false,
+                "html_url":"https://github.com/RidTheWann/UBAHVO-Project/releases/tag/v0.1.0",
+                "assets":[{"name":"UBAHVO-0.1.0-universal.apk","size":2000}]
+              }
+            ]
+        """.trimIndent()
+
+        assertTrue(
+            AppUpdateChecker.findNewerRelease(json, "0.1.0-beta.18")?.tag == "v0.1.0"
+        )
+    }
+
+    @Test
+    fun skipsDraftInvalidUrlAndUnsupportedAssetReleases() {
+        val json = """
+            [
+              {
+                "tag_name":"v0.1.0-beta.20","draft":true,
+                "html_url":"https://github.com/RidTheWann/UBAHVO-Project/releases/tag/v0.1.0-beta.20",
+                "assets":[{"name":"UBAHVO-0.1.0-beta.20-universal-debug.apk","size":1000}]
+              },
+              {
+                "tag_name":"v0.1.0-beta.21","draft":false,
+                "html_url":"https://evil.example/RidTheWann/UBAHVO-Project/releases/tag/v0.1.0-beta.21",
+                "assets":[{"name":"UBAHVO-0.1.0-beta.21-universal-debug.apk","size":1000}]
+              },
+              {
+                "tag_name":"v0.1.0-beta.22","draft":false,
+                "html_url":"https://github.com/RidTheWann/UBAHVO-Project/releases/tag/v0.1.0-beta.22",
+                "assets":[{"name":"OTHER-0.1.0-beta.22-universal-debug.apk","size":1000}]
+              }
+            ]
+        """.trimIndent()
+
+        assertTrue(AppUpdateChecker.findNewerRelease(json, "0.1.0-beta.19") == null)
+    }
+
+    @Test
+    fun rejectsNonArrayMalformedAndTrailingJsonResponses() {
+        listOf(
+            """{"tag_name":"v0.1.0-beta.17"}""",
+            """[{"tag_name":""",
+            """[] {}"""
+        ).forEach { json ->
+            org.junit.Assert.assertThrows(java.io.IOException::class.java) {
+                AppUpdateChecker.findNewerRelease(json, "0.1.0-beta.16")
+            }
+        }
+    }
+
 }

@@ -3,7 +3,9 @@ package com.ridthewann.ubahvo.updates
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
-import org.json.JSONArray
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URI
@@ -109,22 +111,35 @@ internal object AppUpdateChecker {
     internal fun findNewerRelease(releasesJson: String, currentVersion: String): AppUpdateInfo? {
         val current = parseVersion(currentVersion) ?: return null
         val releases = try {
-            JSONArray(releasesJson)
+            JSON_MAPPER.readTree(releasesJson)
         } catch (error: Exception) {
             throw IOException("The UBAHVO release list is invalid.", error)
         }
+        if (releases == null || !releases.isArray) {
+            throw IOException("The UBAHVO release list must be a JSON array.")
+        }
 
         var newest: Pair<Version, AppUpdateInfo>? = null
-        for (index in 0 until releases.length()) {
-            val release = releases.optJSONObject(index) ?: continue
-            if (release.optBoolean("draft", false)) continue
-            val tag = release.optString("tag_name", "")
+        for (release in releases) {
+            if (!release.isObject || release.path("draft").asBoolean(false)) continue
+            val tag = release.path("tag_name")
+                .takeIf { it.isTextual }?.asText().orEmpty()
             val version = parseVersion(tag) ?: continue
-            val releaseUrl = validateReleaseUrl(release.optString("html_url", ""), tag) ?: continue
-            val assets = release.optJSONArray("assets") ?: continue
-            val assetNamesAndSizes = (0 until assets.length()).mapNotNull { assetIndex ->
-                val asset = assets.optJSONObject(assetIndex) ?: return@mapNotNull null
-                asset.optString("name", "") to asset.optLong("size", 0L)
+            val rawReleaseUrl = release.path("html_url")
+                .takeIf { it.isTextual }?.asText().orEmpty()
+            val releaseUrl = validateReleaseUrl(rawReleaseUrl, tag) ?: continue
+            val assets = release.path("assets")
+            if (!assets.isArray) continue
+
+            val assetNamesAndSizes = assets.mapNotNull { asset ->
+                if (!asset.isObject) return@mapNotNull null
+                val nameNode = asset.path("name")
+                val sizeNode = asset.path("size")
+                if (!nameNode.isTextual) return@mapNotNull null
+                val size = if (sizeNode.isIntegralNumber && sizeNode.canConvertToLong()) {
+                    sizeNode.asLong()
+                } else 0L
+                nameNode.asText() to size
             }
             if (!hasSupportedApkAsset(assetNamesAndSizes, tag) || version <= current) continue
 
@@ -249,6 +264,9 @@ internal object AppUpdateChecker {
             connection.disconnect()
         }
     }
+
+    private val JSON_MAPPER = ObjectMapper()
+        .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
 
     private val VERSION_PATTERN = Regex("""v?(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?""")
 }
