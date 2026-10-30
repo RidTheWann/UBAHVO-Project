@@ -224,9 +224,7 @@ jobs:
             | tee /tmp/ubahvo-native-16k-audit.txt
           {
             echo "### Native ELF 16 KB page-size audit (report-only)"
-            echo '\`\`\`text'
-            cat /tmp/ubahvo-native-16k-audit.txt
-            echo '\`\`\`'
+            sed 's/^/    /' /tmp/ubahvo-native-16k-audit.txt
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload UBAHVO universal APK
