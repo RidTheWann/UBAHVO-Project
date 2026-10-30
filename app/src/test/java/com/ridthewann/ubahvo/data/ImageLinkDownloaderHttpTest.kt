@@ -324,9 +324,9 @@ class ImageLinkDownloaderHttpTest {
         }
     }
 
-    private suspend fun expectDownloadFailure(block: suspend () -> PublishedOutput): ImageLinkException {
+    private fun expectDownloadFailure(block: suspend () -> PublishedOutput): ImageLinkException {
         return try {
-            block()
+            runBlocking { block() }
             throw AssertionError("Expected the image download to fail.")
         } catch (error: ImageLinkException) {
             error
