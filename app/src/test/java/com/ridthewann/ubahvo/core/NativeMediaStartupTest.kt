@@ -71,6 +71,34 @@ class NativeMediaStartupTest {
     }
 
     @Test
+    fun virtualMachineErrorsAreNeverSwallowed() {
+        val failure = OutOfMemoryError("synthetic fatal VM error")
+
+        try {
+            NativeMediaStartup.initialize(4096L) {
+                throw failure
+            }
+            throw AssertionError("Expected the fatal VM error to be rethrown")
+        } catch (actual: OutOfMemoryError) {
+            assertSame(failure, actual)
+        }
+    }
+
+    @Test
+    fun threadDeathIsNeverSwallowed() {
+        val failure = ThreadDeath()
+
+        try {
+            NativeMediaStartup.initialize(4096L) {
+                throw failure
+            }
+            throw AssertionError("Expected ThreadDeath to be rethrown")
+        } catch (actual: ThreadDeath) {
+            assertSame(failure, actual)
+        }
+    }
+
+    @Test
     fun ordinaryInitializationFailureIsReportedInsteadOfEscaping() {
         val failure = IllegalStateException("test-init-failure")
 
