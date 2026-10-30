@@ -13,9 +13,14 @@ internal object MediaExtractorRequestPolicy {
             "(KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
 
     fun userAgentFor(rawUrl: String): String? {
-        val host = runCatching {
-            URI(rawUrl).host?.lowercase(Locale.ROOT)
-        }.getOrNull() ?: return null
+        val uri = runCatching { URI(rawUrl) }.getOrNull() ?: return null
+        if (!uri.scheme.equals("https", ignoreCase = true) ||
+            uri.rawUserInfo != null ||
+            (uri.port != -1 && uri.port != 443)
+        ) {
+            return null
+        }
+        val host = uri.host?.lowercase(Locale.ROOT) ?: return null
 
         return if (
             host == "tiktok.com" || host.endsWith(".tiktok.com") ||
