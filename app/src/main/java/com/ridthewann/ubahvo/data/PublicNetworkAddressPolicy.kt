@@ -63,6 +63,12 @@ internal object PublicNetworkAddressPolicy {
         // ULA, link-local, multicast, unspecified, and other non-global address classes.
         if ((bytes[0].toInt() and 0xE0) != 0x20) return false
 
+        // The 3f00::/8 portion remains reserved by IANA, including 3fff::/20
+        // documentation space. 5f00::/16 is reserved for SRv6 SIDs and is not
+        // globally reachable as a conventional Internet destination.
+        if (matchesIpv6Prefix(bytes, byteArrayOf(0x3F, 0x00), 8)) return false
+        if (matchesIpv6Prefix(bytes, byteArrayOf(0x5F, 0x00), 16)) return false
+
         // IANA special-purpose/protocol ranges and legacy transition space. Deny the
         // complete 2001::/23 block conservatively rather than trying to maintain exceptions.
         if (matchesIpv6Prefix(bytes, byteArrayOf(0x20, 0x01, 0x00), 23)) return false
