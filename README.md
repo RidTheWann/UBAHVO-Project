@@ -21,7 +21,7 @@
 - Background checks for published UBAHVO releases using Android's JobScheduler, with system notifications when permission is granted and an in-app update notice otherwise. APK installation is always confirmed by Android.
 - A small dependency-free Rust validation core, built as ABI-specific static libraries for `arm64-v8a`, `armeabi-v7a`, and `x86_64`, linked into a small C++17 JNI adapter. The established JVM parser remains as a fallback when the native library is unavailable or the input is non-ASCII.
 - Fast-path validation rejects oversized URLs and malformed or unsupported hosts before starting the downloader; this native parser is deliberately narrow and does not replace network/media processing.
-- Automatically checks and updates the official stable yt-dlp support component on its maintenance schedule after the media engine is initialized (the first MP4/MP3 request). The updater validates the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before installation, then verifies staged and installed files and protects against rollback.
+- Automatically checks and updates the official stable yt-dlp support component on its maintenance schedule after the native engine is initialized for a remote-link download. Local-file conversion does not start a yt-dlp network update. The updater validates the HTTPS host, asset size, script header, and GitHub-published SHA-256 digest before installation, then verifies staged and installed files and protects against rollback.
 - CI runs Rust and Android unit tests, builds universal and ABI-specific APKs plus an unsigned AAB candidate, verifies native runtime packaging, measures download sizes, and publishes beta prereleases.
 
 ## Download UBAHVO
