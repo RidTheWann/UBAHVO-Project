@@ -2,7 +2,7 @@
 
 **UBAHVO** is a native Android media converter for supported HTTPS media links from multiple sites and user-selected local audio/video files. The current output formats are MP4 video and MP3 audio. Direct downloads include a universal APK and smaller ABI-specific APKs for ARM phones and x86_64 emulators.
 
-**Current status: beta (`0.1.0-beta.16`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.17`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
@@ -13,11 +13,11 @@
 - Progress reporting for extraction, format selection, transfer, and post-processing; segmented DASH/HLS downloads request up to four concurrent fragments. Initial extraction still depends on the site and network.
 - Local audio/video conversion to MP3 or MP4 from files selected through Android's document picker. FFprobe inspects the streams before FFmpeg runs; selected input is copied into app-private cache, and temporary files are removed when the job finishes or is cancelled.
 - Saves supported direct images and primary preview images from public metadata pages to `Download/UBAHVO`, preserving recognized JPEG, PNG, WebP, GIF, AVIF, HEIC, and BMP payloads. No external image downloader library is used for this path.
-- Image requests use OkHttp with a public-only DNS resolver. The full IPv4/IPv6 answer set is validated and then supplied directly to the HTTP client for routing; every redirect is handled manually and independently revalidated. TLS hostname/certificate verification remains at OkHttp defaults, proxies are disabled, responses have strict size/read/call limits, and partial-content responses are rejected.
+- Image requests use OkHttp 5.4.0 with a public-only DNS resolver. The full IPv4/IPv6 answer set is validated and then supplied directly to the HTTP client for routing; every redirect is handled manually and independently revalidated. TLS hostname/certificate verification remains at OkHttp defaults, proxies are disabled, responses have strict size/read/call limits, and partial-content responses are rejected.
 - Recent history for the five latest app-owned outputs, including file sizes, local timestamps, and open/share shortcuts.
 - Scoped-storage publishing through MediaStore; no broad storage permission is requested.
-- HTTPS media URL preflight and unit tests.
-- An animated “Selamat Datang” launch screen followed by a startup loader while native media components initialize and eligible verified component updates are checked.
+- HTTPS media URL preflight and unit tests, including regression coverage for social share links and public-only image DNS routing.
+- An animated “Selamat Datang” launch screen followed by a startup loader while native media components initialize and eligible verified component updates are checked. Recoverable startup/runtime errors keep the main interface available in limited mode; MP4/MP3 conversion stays disabled when the native engine is not safe to use.
 - Background checks for published UBAHVO releases using Android's JobScheduler, with system notifications when permission is granted and an in-app update notice otherwise. APK installation is always confirmed by Android.
 - A small dependency-free Rust validation core, built as ABI-specific static libraries for `arm64-v8a`, `armeabi-v7a`, and `x86_64`, linked into a small C++17 JNI adapter. The established JVM parser remains as a fallback when the native library is unavailable or the input is non-ASCII.
 - Fast-path validation rejects oversized URLs and malformed or unsupported hosts before starting the downloader; this native parser is deliberately narrow and does not replace network/media processing.
@@ -28,10 +28,10 @@
 
 Open the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and choose a build that matches your device:
 
-- **Universal APK — easiest:** `UBAHVO-0.1.0-beta.16-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
-- **Most current Android phones:** `UBAHVO-0.1.0-beta.16-arm64-v8a-debug.apk` is for 64-bit ARM phones.
-- **Older 32-bit ARM devices:** `UBAHVO-0.1.0-beta.16-armeabi-v7a-debug.apk` is for supported 32-bit ARM phones.
-- **Emulators / compatible Intel Android devices:** `UBAHVO-0.1.0-beta.16-x86_64-debug.apk` is for x86_64 Android environments.
+- **Universal APK — easiest:** `UBAHVO-0.1.0-beta.17-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
+- **Most current Android phones:** `UBAHVO-0.1.0-beta.17-arm64-v8a-debug.apk` is for 64-bit ARM phones.
+- **Older 32-bit ARM devices:** `UBAHVO-0.1.0-beta.17-armeabi-v7a-debug.apk` is for supported 32-bit ARM phones.
+- **Emulators / compatible Intel Android devices:** `UBAHVO-0.1.0-beta.17-x86_64-debug.apk` is for x86_64 Android environments.
 
 Prefer the ABI-specific APK when you know your device architecture; it avoids downloading unrelated native libraries. Install the one matching your device. The release also publishes a `SHA256SUMS.txt` file so each APK can be verified after download.
 
@@ -66,7 +66,7 @@ gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease
 ```
 
-Debug APKs are produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.16-universal-debug.apk` and ABI-specific `UBAHVO-0.1.0-beta.16-{arm64-v8a,armeabi-v7a,x86_64}-debug.apk` files. CI also produces an unsigned AAB candidate under `app/build/outputs/bundle/release/app-release.aab`.
+Debug APKs are produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.17-universal-debug.apk` and ABI-specific `UBAHVO-0.1.0-beta.17-{arm64-v8a,armeabi-v7a,x86_64}-debug.apk` files. CI also produces an unsigned AAB candidate under `app/build/outputs/bundle/release/app-release.aab`.
 
 ## Product roadmap
 
