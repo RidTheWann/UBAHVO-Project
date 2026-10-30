@@ -278,7 +278,7 @@ fun ConverterScreen(
                             if (state.mode == OutputMode.IMAGE) {
                                 "Tempel tautan gambar langsung atau halaman publik yang menyediakan metadata gambar utama. Untuk posting carousel, hasil awal mungkin hanya gambar sampul; tidak semua situs menampilkan foto asli melalui metadata publik."
                             } else {
-                                "Pilih Bagikan lalu UBAHVO, atau tempel tautan. Banyak situs media didukung, tetapi tidak semua tautan dijamin bekerja; playlist belum didukung."
+                                "Pilih Bagikan lalu UBAHVO, atau tempel tautan TikTok, Instagram, Facebook, X, Reddit, YouTube, dan situs lain yang didukung. Dukungan tiap posting bergantung pada akses publik serta extractor terbaru; playlist dan unduhan batch belum didukung."
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant

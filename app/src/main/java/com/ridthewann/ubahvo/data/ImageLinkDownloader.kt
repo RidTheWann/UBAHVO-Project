@@ -6,33 +6,55 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.InetAddress
+import java.net.Proxy
 import java.net.URI
-import java.net.URL
+import java.net.UnknownHostException
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 internal class ImageLinkException(val userMessage: String, cause: Throwable? = null) : IOException(userMessage, cause)
 
 /**
  * First-party public image fetcher: a direct raster-image URL or an image declared by public
  * Open Graph/Twitter metadata. It does not execute JavaScript or bypass source-service controls.
+ *
+ * OkHttp's custom Dns receives the validated InetAddress list and uses that exact list for route
+ * selection. The original URL hostname remains intact for SNI and TLS certificate verification.
  */
 internal class ImageLinkDownloader(
     private val context: Context,
     private val publisher: OutputPublisher
 ) {
-    private data class OpenedResponse(val finalUrl: String, val connection: HttpURLConnection)
+    private data class OpenedResponse(
+        val finalUrl: String,
+        val response: Response,
+        val call: Call
+    )
     private data class StagedImage(val file: File, val format: RecognizedImageFormat, val displayName: String)
 
-    private val activeConnections = ConcurrentHashMap<String, HttpURLConnection>()
+    private val activeCalls = ConcurrentHashMap<String, Call>()
+
+    private val httpClient: OkHttpClient = OkHttpClient.Builder()
+        .dns(PublicOnlyDns())
+        .proxy(Proxy.NO_PROXY)
+        .connectTimeout(CONNECT_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+        .readTimeout(READ_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+        .callTimeout(CALL_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .retryOnConnectionFailure(true)
+        .build()
 
     suspend fun download(
         url: String,
@@ -47,25 +69,25 @@ internal class ImageLinkDownloader(
         try {
             onProgress(0f, 0L, "IMAGE_STAGE:Memeriksa tautan gambar publik…")
             val page = openFollowingRedirects(processId, url, IMAGE_ACCEPT)
-            val pageInput = BufferedInputStream(page.connection.inputStream)
+            val pageBody = page.response.body
+            val pageInput = BufferedInputStream(pageBody.byteStream())
             val pagePrefix = ImagePrefixReader.readPrefix(pageInput, HEADER_BYTES)
-            val pageType = mediaType(page.connection.getHeaderField("Content-Type"))
+            val pageType = mediaType(page.response.header("Content-Type"))
             val htmlPage = pageType == "text/html" || pageType == "application/xhtml+xml" || looksLikeHtml(pagePrefix)
             val staged = if (!htmlPage) {
-                stageImage(pageInput, page, pagePrefix, workDirectory, null, coroutineContext, onProgress)
+                stageImage(processId, pageInput, page, pagePrefix, workDirectory, null, coroutineContext, onProgress)
             } else {
                 onProgress(1f, 0L, "IMAGE_STAGE:Mencari gambar utama dari metadata halaman…")
-                val html = readLimitedHtml(pageInput, page.connection.contentLengthLong, coroutineContext)
-                disconnect(processId, page.connection)
+                val html = readLimitedHtml(pageInput, pageBody.contentLength(), coroutineContext)
+                closeResponse(processId, page)
                 val metadata = PublicImageMetadataParser.parse(html, page.finalUrl)
                     ?: throw ImageLinkException(
                         "Halaman ini tidak menyediakan gambar publik melalui metadata standar. " +
                             "Beberapa posting carousel memerlukan dukungan khusus dan belum bisa diekstrak."
                     )
                 metadata.title?.let { onProgress(2f, 0L, "IMAGE_TITLE:$it") }
-                val candidates = metadata.imageUrls.mapNotNull { candidate ->
-                    runCatching { validatePublicUrl(candidate) }.getOrNull()
-                }.distinct().take(MAX_IMAGE_CANDIDATES)
+                val candidates = metadata.imageUrls.mapNotNull { MediaUrlValidator.normalize(it) }
+                    .distinct().take(MAX_IMAGE_CANDIDATES)
                 if (candidates.isEmpty()) {
                     throw ImageLinkException("Halaman tidak memberikan URL gambar HTTPS yang aman.")
                 }
@@ -74,24 +96,32 @@ internal class ImageLinkDownloader(
                 var lastError: Exception? = null
                 for (candidate in candidates) {
                     coroutineContext.ensureActive()
+                    var openedCandidate: OpenedResponse? = null
                     try {
                         val imageResponse = openFollowingRedirects(processId, candidate, IMAGE_ACCEPT)
-                        val imageInput = BufferedInputStream(imageResponse.connection.inputStream)
+                        openedCandidate = imageResponse
+                        val imageBody = imageResponse.response.body
+                        val imageInput = BufferedInputStream(imageBody.byteStream())
                         val imagePrefix = ImagePrefixReader.readPrefix(imageInput, HEADER_BYTES)
-                        val imageType = mediaType(imageResponse.connection.getHeaderField("Content-Type"))
+                        val imageType = mediaType(imageResponse.response.header("Content-Type"))
                         if (imageType == "text/html" || imageType == "application/xhtml+xml" || looksLikeHtml(imagePrefix)) {
                             imageInput.close()
-                            disconnect(processId, imageResponse.connection)
+                            closeResponse(processId, imageResponse)
+                            openedCandidate = null
                             continue
                         }
                         chosen = stageImage(
-                            imageInput, imageResponse, imagePrefix, workDirectory, metadata.title,
+                            processId, imageInput, imageResponse, imagePrefix, workDirectory, metadata.title,
                             coroutineContext, onProgress
                         )
+                        // stageImage closes the response in its finally block.
+                        openedCandidate = null
                         break
                     } catch (cancelled: CancellationException) {
+                        openedCandidate?.let { closeResponse(processId, it) }
                         throw cancelled
                     } catch (error: Exception) {
+                        openedCandidate?.let { closeResponse(processId, it) }
                         lastError = error
                     }
                 }
@@ -119,20 +149,22 @@ internal class ImageLinkDownloader(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: ImageLinkException) {
+            coroutineContext.ensureActive()
             throw error
         } catch (error: Exception) {
+            coroutineContext.ensureActive()
             throw ImageLinkException(
                 "Gambar belum berhasil disimpan. Pastikan tautan publik aktif, koneksi stabil, dan penyimpanan cukup.",
                 error
             )
         } finally {
-            activeConnections.remove(processId)?.disconnect()
+            activeCalls.remove(processId)?.cancel()
             workDirectory.deleteRecursively()
         }
     }
 
     fun cancel(processId: String) {
-        activeConnections.remove(processId)?.disconnect()
+        activeCalls.remove(processId)?.cancel()
     }
 
     private suspend fun openFollowingRedirects(
@@ -143,25 +175,41 @@ internal class ImageLinkDownloader(
         var currentUrl = validatePublicUrl(initialUrl)
         repeat(MAX_REDIRECTS + 1) { redirectCount ->
             currentCoroutineContext().ensureActive()
-            val connection = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
-                instanceFollowRedirects = false
-                connectTimeout = CONNECT_TIMEOUT_MS
-                readTimeout = READ_TIMEOUT_MS
-                useCaches = true
-                setRequestProperty("User-Agent", USER_AGENT)
-                setRequestProperty("Accept", accept)
-                setRequestProperty("Accept-Encoding", "identity")
-            }
-            activeConnections[processId] = connection
-            val status = try {
-                connection.responseCode
+            val request = Request.Builder()
+                .url(currentUrl)
+                .get()
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", accept)
+                .header("Accept-Encoding", "identity")
+                .build()
+            val call = httpClient.newCall(request)
+            activeCalls[processId] = call
+            currentCoroutineContext().ensureActive()
+
+            val response = try {
+                call.execute()
+            } catch (cancelled: CancellationException) {
+                call.cancel()
+                activeCalls.remove(processId, call)
+                throw cancelled
             } catch (error: Exception) {
-                disconnect(processId, connection)
+                call.cancel()
+                activeCalls.remove(processId, call)
+                currentCoroutineContext().ensureActive()
+                if (error is UnknownHostException) {
+                    throw ImageLinkException(
+                        "Host gambar tidak dapat dijangkau atau DNS tidak menunjuk ke alamat publik.",
+                        error
+                    )
+                }
                 throw error
             }
+
+            val opened = OpenedResponse(currentUrl, response, call)
+            val status = response.code
             if (status in REDIRECT_CODES) {
-                val location = connection.getHeaderField("Location")
-                disconnect(processId, connection)
+                val location = response.header("Location")
+                closeResponse(processId, opened)
                 if (location.isNullOrBlank() || redirectCount >= MAX_REDIRECTS) {
                     throw ImageLinkException("Tautan gambar terlalu banyak dialihkan atau redirect-nya tidak valid.")
                 }
@@ -172,16 +220,17 @@ internal class ImageLinkDownloader(
                 }
                 return@repeat
             }
-            if (status !in 200..299) {
-                disconnect(processId, connection)
-                throw ImageLinkException("Sumber menolak permintaan gambar (HTTP " + status + ").")
+            if (status !in 200..299 || status == 206 || response.header("Content-Range") != null) {
+                closeResponse(processId, opened)
+                throw ImageLinkException("Sumber menolak atau hanya mengirim sebagian data gambar (HTTP $status).")
             }
-            return OpenedResponse(currentUrl, connection)
+            return opened
         }
         throw ImageLinkException("Tautan gambar dialihkan terlalu banyak kali.")
     }
 
     private suspend fun stageImage(
+        processId: String,
         input: BufferedInputStream,
         response: OpenedResponse,
         prefix: ByteArray,
@@ -192,64 +241,64 @@ internal class ImageLinkDownloader(
     ): StagedImage {
         try {
             input.use { stream ->
-            val format = ImageSignatureDetector.detect(prefix)
-                ?: throw ImageLinkException(
-                    "Tautan ini bukan gambar raster yang didukung. SVG dan file non-gambar tidak disimpan sebagai wallpaper."
-                )
-            val expectedBytes = response.connection.contentLengthLong
-            if (expectedBytes > MAX_IMAGE_BYTES) {
-                throw ImageLinkException("Gambar melebihi batas " + (MAX_IMAGE_BYTES / (1024 * 1024)) + " MB untuk satu file.")
-            }
-            val available = workDirectory.usableSpace
-            if (available <= MINIMUM_FREE_SPACE_BYTES ||
-                expectedBytes > 0L && expectedBytes > available - MINIMUM_FREE_SPACE_BYTES
-            ) {
-                throw ImageLinkException("Ruang sementara tidak cukup untuk menyimpan gambar ini.")
-            }
-            val file = File(workDirectory, "image." + format.extension)
-            var totalBytes = 0L
-            var lastReportedPercent = -1f
-            try {
-                file.outputStream().buffered().use { output ->
-                    val buffer = ByteArray(COPY_BUFFER_SIZE)
-                    while (true) {
-                        coroutineContext.ensureActive()
-                        val count = stream.read(buffer)
-                        if (count < 0) break
-                        totalBytes += count
-                        if (totalBytes > MAX_IMAGE_BYTES ||
-                            totalBytes > (available - MINIMUM_FREE_SPACE_BYTES).coerceAtLeast(0L)
-                        ) {
-                            throw ImageLinkException("Gambar terlalu besar atau ruang sementara tidak mencukupi.")
-                        }
-                        output.write(buffer, 0, count)
-                        val percent = if (expectedBytes > 0L) {
-                            (5f + 90f * (totalBytes.toDouble() / expectedBytes).coerceIn(0.0, 1.0)).toFloat()
-                        } else 5f
-                        if (percent - lastReportedPercent >= 1f) {
-                            lastReportedPercent = percent
-                            onProgress(
-                                percent, 0L,
-                                if (expectedBytes > 0L) "IMAGE_MODE:determinate" else "IMAGE_MODE:indeterminate"
-                            )
+                val format = ImageSignatureDetector.detect(prefix)
+                    ?: throw ImageLinkException(
+                        "Tautan ini bukan gambar raster yang didukung. SVG dan file non-gambar tidak disimpan sebagai wallpaper."
+                    )
+                val expectedBytes = response.response.body.contentLength()
+                if (expectedBytes > MAX_IMAGE_BYTES) {
+                    throw ImageLinkException("Gambar melebihi batas " + (MAX_IMAGE_BYTES / (1024 * 1024)) + " MB untuk satu file.")
+                }
+                val available = workDirectory.usableSpace
+                if (available <= MINIMUM_FREE_SPACE_BYTES ||
+                    expectedBytes > 0L && expectedBytes > available - MINIMUM_FREE_SPACE_BYTES
+                ) {
+                    throw ImageLinkException("Ruang sementara tidak cukup untuk menyimpan gambar ini.")
+                }
+                val file = File(workDirectory, "image." + format.extension)
+                var totalBytes = 0L
+                var lastReportedPercent = -1f
+                try {
+                    file.outputStream().buffered().use { output ->
+                        val buffer = ByteArray(COPY_BUFFER_SIZE)
+                        while (true) {
+                            coroutineContext.ensureActive()
+                            val count = stream.read(buffer)
+                            if (count < 0) break
+                            totalBytes += count
+                            if (totalBytes > MAX_IMAGE_BYTES ||
+                                totalBytes > (available - MINIMUM_FREE_SPACE_BYTES).coerceAtLeast(0L)
+                            ) {
+                                throw ImageLinkException("Gambar terlalu besar atau ruang sementara tidak mencukupi.")
+                            }
+                            output.write(buffer, 0, count)
+                            val percent = if (expectedBytes > 0L) {
+                                (5f + 90f * (totalBytes.toDouble() / expectedBytes).coerceIn(0.0, 1.0)).toFloat()
+                            } else 5f
+                            if (percent - lastReportedPercent >= 1f) {
+                                lastReportedPercent = percent
+                                onProgress(
+                                    percent, 0L,
+                                    if (expectedBytes > 0L) "IMAGE_MODE:determinate" else "IMAGE_MODE:indeterminate"
+                                )
+                            }
                         }
                     }
+                    if (totalBytes <= 0L) throw ImageLinkException("Sumber menghasilkan file gambar kosong.")
+                    if (expectedBytes > 0L && totalBytes != expectedBytes) {
+                        throw ImageLinkException("Unduhan gambar tidak lengkap; ukuran hasil berbeda dari yang dilaporkan sumber.")
+                    }
+                    onProgress(95f, 0L, "IMAGE_MODE:determinate")
+                    val base = safeBaseName(fallbackTitle ?: filenameFromUrl(response.finalUrl))
+                    return StagedImage(file, format, base + "." + format.extension)
+                } catch (error: Exception) {
+                    file.delete()
+                    coroutineContext.ensureActive()
+                    throw error
                 }
-                if (totalBytes <= 0L) throw ImageLinkException("Sumber menghasilkan file gambar kosong.")
-                if (expectedBytes > 0L && totalBytes != expectedBytes) {
-                    throw ImageLinkException("Unduhan gambar tidak lengkap; ukuran hasil berbeda dari yang dilaporkan sumber.")
-                }
-                onProgress(95f, 0L, "IMAGE_MODE:determinate")
-                val base = safeBaseName(fallbackTitle ?: filenameFromUrl(response.finalUrl))
-                return StagedImage(file, format, base + "." + format.extension)
-            } catch (error: Exception) {
-                file.delete()
-                throw error
-            }
             }
         } finally {
-            // Disconnect even when signature, content-length, or disk-space checks fail before the copy starts.
-            disconnect(response.connection)
+            closeResponse(processId, response)
         }
     }
 
@@ -291,36 +340,15 @@ internal class ImageLinkDownloader(
         return String(bytes, charset)
     }
 
-    private fun validatePublicUrl(input: String): String {
-        val normalized = MediaUrlValidator.normalize(input) ?: throw ImageLinkException("Gunakan tautan HTTPS publik yang valid.")
-        val host = URI(normalized).host ?: throw ImageLinkException("Tautan tidak memiliki host yang valid.")
-        val addresses = try {
-            InetAddress.getAllByName(host)
-        } catch (error: Exception) {
-            throw ImageLinkException("Host gambar tidak dapat dijangkau.", error)
-        }
-        if (addresses.isEmpty() || addresses.any(::isPrivateAddress)) {
-            throw ImageLinkException("Tautan menuju alamat jaringan lokal atau privat tidak diizinkan.")
-        }
-        return normalized
+    private fun validatePublicUrl(input: String): String =
+        MediaUrlValidator.normalize(input)
+            ?: throw ImageLinkException("Gunakan tautan HTTPS publik yang valid.")
+
+    private fun closeResponse(processId: String, opened: OpenedResponse) {
+        activeCalls.remove(processId, opened.call)
+        opened.response.close()
     }
 
-    private fun isPrivateAddress(address: InetAddress): Boolean {
-        if (address.isAnyLocalAddress || address.isLoopbackAddress ||
-            address.isLinkLocalAddress || address.isSiteLocalAddress || address.isMulticastAddress
-        ) return true
-        val bytes = address.address
-        return bytes.size == 16 && (bytes[0].toInt() and 0xFE) == 0xFC
-    }
-
-    private fun disconnect(processId: String, connection: HttpURLConnection) {
-        activeConnections.remove(processId, connection)
-        connection.disconnect()
-    }
-
-    private fun disconnect(connection: HttpURLConnection) {
-        connection.disconnect()
-    }
 
     private fun mediaType(value: String?): String = value.orEmpty().substringBefore(';').trim().lowercase(Locale.ROOT)
 
@@ -340,6 +368,7 @@ internal class ImageLinkDownloader(
         private const val IMAGE_ACCEPT = "image/avif,image/webp,image/png,image/jpeg,image/gif,image/*,text/html;q=0.8,*/*;q=0.5"
         private const val CONNECT_TIMEOUT_MS = 12_000
         private const val READ_TIMEOUT_MS = 20_000
+        private const val CALL_TIMEOUT_MS = 10 * 60 * 1000
         private const val MAX_REDIRECTS = 5
         private const val MAX_IMAGE_CANDIDATES = 5
         private const val MAX_IMAGE_BYTES = 100L * 1024L * 1024L
