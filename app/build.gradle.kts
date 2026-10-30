@@ -312,4 +312,5 @@ dependencies {
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver3:5.4.0")
 }
