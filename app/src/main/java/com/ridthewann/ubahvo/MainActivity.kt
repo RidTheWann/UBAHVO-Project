@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.widget.Toast
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -26,6 +27,7 @@ import com.ridthewann.ubahvo.updates.AppUpdateChecker
 import com.ridthewann.ubahvo.updates.AppUpdateCheckJobService
 import com.ridthewann.ubahvo.updates.AppUpdateInfo
 import com.ridthewann.ubahvo.updates.AppUpdateNotifications
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +35,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        private const val TAG = "UBAHVO-Startup"
+    }
+
     private lateinit var viewModel: ConverterViewModel
     private val startupState = MutableStateFlow(StartupUiState())
     private val mainContentReady = MutableStateFlow(false)
@@ -101,22 +107,53 @@ class MainActivity : ComponentActivity() {
                 showProgress = true
             )
             val app = application as UbahvoApplication
-            val prepared = app.prepareStartup { message ->
-                startupState.value = StartupUiState(message = message, showProgress = true)
+            val prepared = try {
+                app.prepareStartup { message ->
+                    startupState.value = StartupUiState(message = message, showProgress = true)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                // A non-fatal error in an optional native/runtime startup stage must not leave
+                // the Activity without its main UI. Never swallow fatal VM conditions.
+                if (failure is VirtualMachineError || failure is ThreadDeath) throw failure
+                app.markMediaEngineUnavailable(failure)
+                StartupPreparationResult(
+                    engineReady = false,
+                    errorMessage = app.engineError,
+                    componentMessage = "Komponen media tidak tersedia; antarmuka tetap dibuka."
+                )
             }
             startupState.value = StartupUiState(
                 message = if (prepared.engineReady) prepared.componentMessage
-                    else "Menyiapkan antarmuka agar aplikasi tetap bisa dibuka…",
+                    else "Menyelesaikan antarmuka UBAHVO…",
                 showProgress = true
             )
-            delay(380)
+            delay(250)
 
             viewModel = ViewModelProvider(this@MainActivity, ConverterViewModelFactory(app))
                 .get(ConverterViewModel::class.java)
             mainContentReady.value = true
-            readSharedText(intent)
-            AppUpdateCheckJobService.schedule(this@MainActivity)
-            checkForAppUpdates()
+
+            try {
+                readSharedText(intent)
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not process the launch share intent", error)
+            }
+
+            // Background update scheduling is optional and must never be able to take down
+            // the foreground converter, particularly on emulators with partial JobScheduler support.
+            try {
+                AppUpdateCheckJobService.schedule(this@MainActivity)
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not schedule background app-update checks", error)
+            }
+
+            try {
+                checkForAppUpdates()
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not start the foreground app-update check", error)
+            }
         }
     }
 
@@ -166,6 +203,9 @@ class MainActivity : ComponentActivity() {
                 }
             } catch (_: Exception) {
                 // Version checks are opportunistic: offline or rate-limited checks never block the app.
+            } catch (error: Throwable) {
+                if (error is VirtualMachineError || error is ThreadDeath) throw error
+                Log.e(TAG, "Non-fatal JVM error during the foreground app-update check", error)
             } finally {
                 appUpdateCheckRunning = false
             }

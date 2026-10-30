@@ -261,6 +261,14 @@ class ConverterViewModel(
                         ytdlpUpdateMessage = "Pemeriksaan otomatis belum berhasil. Dukungan saat ini tetap bisa dicoba; ketuk Perbarui dukungan tautan jika tautan gagal."
                     )
                 }
+            } catch (error: Throwable) {
+                if (error is VirtualMachineError || error is ThreadDeath) throw error
+                android.util.Log.e("UBAHVO", "Non-fatal JVM error during automatic yt-dlp support update", error)
+                _uiState.update {
+                    it.copy(
+                        ytdlpUpdateMessage = "Pemeriksaan otomatis gagal. Dukungan saat ini tetap bisa dicoba."
+                    )
+                }
             } finally {
                 preferences.edit()
                     .putLong(
@@ -323,6 +331,12 @@ class ConverterViewModel(
                     it.copy(
                         ytdlpUpdateMessage = "Pembaruan gagal. Periksa koneksi internet lalu coba lagi."
                     )
+                }
+            } catch (error: Throwable) {
+                if (error is VirtualMachineError || error is ThreadDeath) throw error
+                android.util.Log.e("UBAHVO", "Non-fatal JVM error during manual yt-dlp support update", error)
+                _uiState.update {
+                    it.copy(ytdlpUpdateMessage = "Pembaruan gagal. Dukungan saat ini tetap bisa dicoba.")
                 }
             } finally {
                 application.getSharedPreferences(AUTO_UPDATE_PREFERENCES, Context.MODE_PRIVATE)
@@ -512,6 +526,17 @@ class ConverterViewModel(
                         errorMessage = friendlyError(error)
                     )
                 }
+            } catch (error: Throwable) {
+                if (error is VirtualMachineError || error is ThreadDeath) throw error
+                android.util.Log.e("UBAHVO", "Non-fatal JVM error during media conversion", error)
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        isProgressIndeterminate = false,
+                        stageMessage = "Konversi gagal.",
+                        errorMessage = friendlyError(error)
+                    )
+                }
             } finally {
                 if (activeProcessId == processId) activeProcessId = null
             }
@@ -534,7 +559,7 @@ class ConverterViewModel(
         }
     }
 
-    private fun friendlyError(error: Exception): String {
+    private fun friendlyError(error: Throwable): String {
         if (error is LocalMediaConversionException) return error.userMessage
         if (error is ImageLinkException) return error.userMessage
         val detail = error.message.orEmpty()

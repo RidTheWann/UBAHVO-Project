@@ -58,6 +58,19 @@ class NativeMediaStartupTest {
     }
 
     @Test
+    fun nonFatalJvmErrorsAreReportedInsteadOfEscaping() {
+        val failure = AssertionError("synthetic startup error")
+
+        val result = NativeMediaStartup.initialize(4096L) {
+            throw failure
+        }
+
+        assertFalse(result.engineReady)
+        assertTrue(result.errorMessage!!.contains("Aplikasi tetap bisa dibuka"))
+        assertSame(failure, result.failure)
+    }
+
+    @Test
     fun ordinaryInitializationFailureIsReportedInsteadOfEscaping() {
         val failure = IllegalStateException("test-init-failure")
 

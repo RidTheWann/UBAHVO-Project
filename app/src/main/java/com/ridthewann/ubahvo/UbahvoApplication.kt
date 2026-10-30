@@ -42,6 +42,17 @@ class UbahvoApplication : Application() {
         // Native startup is deferred so the launcher can display the welcome animation first.
     }
 
+    /**
+     * Leaves the non-native app usable if an unexpected startup-stage failure escapes the
+     * guarded native initializer. The media engine stays disabled until a later app process.
+     */
+    fun markMediaEngineUnavailable(error: Throwable) {
+        engineReady = false
+        engineError = "Komponen media gagal disiapkan. Aplikasi tetap bisa dibuka, tetapi fitur MP4/MP3 dinonaktifkan sampai aplikasi dibuka ulang setelah pembaruan."
+        initializationComplete = true
+        Log.e(TAG, "Media engine marked unavailable after startup failure", error)
+    }
+
     suspend fun prepareStartup(onStage: (String) -> Unit): StartupPreparationResult =
         withContext(Dispatchers.IO) {
             synchronized(initializationLock) {
@@ -111,6 +122,11 @@ class UbahvoApplication : Application() {
                         }
                     } catch (error: Exception) {
                         Log.w(TAG, "Automatic media-component update failed; existing components are retained", error)
+                        componentMessage =
+                            "Pembaruan komponen belum berhasil. UBAHVO tetap dibuka dengan komponen yang tersedia."
+                    } catch (error: Throwable) {
+                        if (error is VirtualMachineError || error is ThreadDeath) throw error
+                        Log.e(TAG, "Non-fatal JVM error during automatic media-component update", error)
                         componentMessage =
                             "Pembaruan komponen belum berhasil. UBAHVO tetap dibuka dengan komponen yang tersedia."
                     } finally {

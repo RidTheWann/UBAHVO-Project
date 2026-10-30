@@ -42,6 +42,16 @@ object NativeMediaStartup {
                 failure = error,
                 failureStage = stage
             )
+        } catch (error: Throwable) {
+            // Native wrappers and reflection may throw non-linkage JVM Errors. Keep the
+            // launcher usable for recoverable failures, but never swallow fatal VM conditions.
+            if (error is VirtualMachineError || error is ThreadDeath) throw error
+            Result(
+                engineReady = false,
+                errorMessage = "$INITIALIZATION_FAILURE_MESSAGE\nTahap terakhir: $stage.",
+                failure = error,
+                failureStage = stage
+            )
         }
     }
 
