@@ -2,7 +2,7 @@
 
 **UBAHVO** is a native Android media converter for supported HTTPS media links from multiple sites and user-selected local audio/video files. The current output formats are MP4 video and MP3 audio. Direct downloads include a universal APK and smaller ABI-specific APKs for ARM phones and x86_64 emulators.
 
-**Current status: beta (`0.1.0-beta.17`).** This is an early test build, not a production-stable release.
+**Current status: beta (`0.1.0-beta.18`).** This is an early test build, not a production-stable release.
 
 ## What works today
 
@@ -28,10 +28,10 @@
 
 Open the [UBAHVO GitHub Releases page](https://github.com/RidTheWann/UBAHVO-Project/releases) and choose a build that matches your device:
 
-- **Universal APK — easiest:** `UBAHVO-0.1.0-beta.17-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
-- **Most current Android phones:** `UBAHVO-0.1.0-beta.17-arm64-v8a-debug.apk` is for 64-bit ARM phones.
-- **Older 32-bit ARM devices:** `UBAHVO-0.1.0-beta.17-armeabi-v7a-debug.apk` is for supported 32-bit ARM phones.
-- **Emulators / compatible Intel Android devices:** `UBAHVO-0.1.0-beta.17-x86_64-debug.apk` is for x86_64 Android environments.
+- **Universal APK — easiest:** `UBAHVO-0.1.0-beta.18-universal-debug.apk` includes `arm64-v8a`, `armeabi-v7a`, and `x86_64` in one download. It is larger because it carries every supported native runtime.
+- **Most current Android phones:** `UBAHVO-0.1.0-beta.18-arm64-v8a-debug.apk` is for 64-bit ARM phones.
+- **Older 32-bit ARM devices:** `UBAHVO-0.1.0-beta.18-armeabi-v7a-debug.apk` is for supported 32-bit ARM phones.
+- **Emulators / compatible Intel Android devices:** `UBAHVO-0.1.0-beta.18-x86_64-debug.apk` is for x86_64 Android environments.
 
 Prefer the ABI-specific APK when you know your device architecture; it avoids downloading unrelated native libraries. Install the one matching your device. The release also publishes a `SHA256SUMS.txt` file so each APK can be verified after download.
 
@@ -66,7 +66,7 @@ gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 gradle --no-daemon -Pubahvo.bundleOnly=true :app:bundleRelease
 ```
 
-Debug APKs are produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.17-universal-debug.apk` and ABI-specific `UBAHVO-0.1.0-beta.17-{arm64-v8a,armeabi-v7a,x86_64}-debug.apk` files. CI also produces an unsigned AAB candidate under `app/build/outputs/bundle/release/app-release.aab`.
+Debug APKs are produced under `app/build/outputs/apk/debug/` as `UBAHVO-0.1.0-beta.18-universal-debug.apk` and ABI-specific `UBAHVO-0.1.0-beta.18-{arm64-v8a,armeabi-v7a,x86_64}-debug.apk` files. CI also produces an unsigned AAB candidate under `app/build/outputs/bundle/release/app-release.aab`.
 
 ## Product roadmap
 
