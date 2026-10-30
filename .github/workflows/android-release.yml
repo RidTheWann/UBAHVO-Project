@@ -233,10 +233,12 @@ jobs:
 
           ## What's included
           - Kotlin + Jetpack Compose interface with plain-language Indonesian labels.
-          - MP4 video or MP3 audio from supported HTTPS media links across multiple yt-dlp extractors. Site coverage varies; playlists and batch downloads remain unsupported.
+          - MP4 video or MP3 audio from supported public HTTPS media links. Common social sources include TikTok, Instagram, Facebook, X/Twitter, Threads, Reddit, Pinterest, and other active yt-dlp extractors; private/sign-in-only/DRM-restricted posts are not bypassed, and individual extractor coverage can change.
           - Convert a user-selected local audio/video file to MP3 or MP4 with the bundled FFmpeg tools when the input streams and available encoders are compatible. Choose "File perangkat" in the app and select a file through Android's document picker; outputs are saved to Download/UBAHVO.
           - First-party image saving from direct public HTTPS image URLs or the primary image exposed through public Open Graph/Twitter metadata. Recognized image signatures include JPEG, PNG, WebP, GIF, AVIF, HEIC, and BMP. A social post may expose only its preview/cover image; this release does not claim full carousel extraction.
-          - Animated "Selamat Datang" startup screen followed by a loader while native media components initialize.
+          - Image downloads use a public-only DNS resolver that validates the full IPv4/IPv6 address set and supplies the same addresses to the HTTP client. Redirects are revalidated, TLS hostname/certificate verification remains enabled, proxies are disabled, and request/response sizes and durations are bounded.
+          - Animated "Selamat Datang" startup screen with a lightweight compatibility check. Python/yt-dlp/FFmpeg packages are extracted and the native media engine is initialized only when the user first requests MP4/MP3 conversion; the first conversion may take longer while components are prepared.
+          - Recoverable startup/runtime errors keep the main interface open in limited mode; MP4/MP3 conversion remains disabled when the media engine cannot be initialized safely.
           - Automatic checks for verified yt-dlp support-component updates on the maintenance schedule, plus periodic checks for new UBAHVO releases. Update notices use Android notifications when permission is granted and an in-app notice otherwise; installation remains a user-confirmed Android action.
           - Progress, cancellation, recent output history, and open/share actions. Media-support component updates are verified over HTTPS with the official GitHub-published SHA-256 digest before installation.
           - New output files are saved in Download/UBAHVO. Legacy files in Download/YoutubeConvert remain where they are; the app attempts to include them in recent history.
