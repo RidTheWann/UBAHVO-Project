@@ -28,7 +28,7 @@ internal class PinnedHttpsSocketFactory(
     init {
         require(hostname.isNotBlank())
         require(approvedAddresses.isNotEmpty())
-        require(approvedAddresses.all(PublicNetworkAddressPolicy::isGloballyReachable))
+        require(approvedAddresses.all { PublicNetworkAddressPolicy.isGloballyReachable(it) })
         require(connectTimeoutMs > 0)
         require(readTimeoutMs > 0)
     }
@@ -72,8 +72,8 @@ internal class PinnedHttpsSocketFactory(
     override fun createSocket(socket: Socket, host: String, port: Int, autoClose: Boolean): Socket {
         requireExpectedPeer(host, port)
         val peerAddress = socket.inetAddress
-        if (!socket.isConnected || socket.isClosed || peerAddress == null) {
-            throw IOException("Pinned HTTPS requires an already-connected socket.")
+        if (!socket.isConnected || socket.isClosed || peerAddress == null || socket.port != port) {
+            throw IOException("Pinned HTTPS requires an already-connected socket to the expected port.")
         }
         requireApprovedAddress(peerAddress)
         return wrapTls(socket, port, autoClose)
@@ -141,6 +141,7 @@ internal class PinnedHttpsSocketFactory(
             parameters.endpointIdentificationAlgorithm = "HTTPS"
             parameters.serverNames = listOf(SNIHostName(hostname))
             sslSocket.sslParameters = parameters
+            sslSocket.soTimeout = readTimeoutMs
             return sslSocket
         } catch (error: Exception) {
             runCatching { sslSocket.close() }
