@@ -5,6 +5,7 @@
 - Harden the beta.16 startup transition: recoverable native/JVM initialization failures now leave the main interface available in limited mode rather than abandoning the foreground startup flow.
 - Keep MP4/MP3 conversion disabled when the native media engine cannot be safely initialized; non-native screens and the public image path remain available.
 - Make optional component updates, release checks, and background JobScheduler registration best-effort so recoverable updater/runtime errors do not take down the converter.
+- Guard ViewModel construction against recoverable synchronous failures while starting the optional automatic yt-dlp update check, so a preference/scheduler error cannot prevent the main screen from being created.
 - Recognize and label common social share links from TikTok, Instagram, Facebook, X/Twitter, Threads, Reddit, Pinterest, and Snapchat, alongside existing YouTube/Vimeo/Twitch/SoundCloud sources.
 - Route public media video/audio extraction through the existing yt-dlp adapter; provider availability remains extractor-dependent and private/sign-in-only/DRM-restricted content is not bypassed.
 - Replace the image fetcher's check-then-connect path with OkHttp 5.4.0 and a public-only DNS resolver that validates and returns the exact address set used for routing. Keep standard TLS hostname/certificate verification and disable proxies and automatic redirects.
