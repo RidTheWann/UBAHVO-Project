@@ -373,7 +373,7 @@ class ConverterViewModel(
             return
         }
 
-        val sourceLabel = normalizedUrl?.let(MediaSourceDetector::displayName) ?: "sumber media"
+        val sourceLabel = normalizedUrl?.let { MediaSourceDetector.displayName(it) } ?: "sumber media"
         val processId = UUID.randomUUID().toString()
         activeProcessId = processId
         activeJob = viewModelScope.launch {
