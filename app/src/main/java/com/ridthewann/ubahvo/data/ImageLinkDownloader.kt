@@ -75,7 +75,7 @@ internal class ImageLinkDownloader(
             val pageType = mediaType(page.response.header("Content-Type"))
             val htmlPage = pageType == "text/html" || pageType == "application/xhtml+xml" || looksLikeHtml(pagePrefix)
             val staged = if (!htmlPage) {
-                stageImage(pageInput, page, pagePrefix, workDirectory, null, coroutineContext, onProgress)
+                stageImage(processId, pageInput, page, pagePrefix, workDirectory, null, coroutineContext, onProgress)
             } else {
                 onProgress(1f, 0L, "IMAGE_STAGE:Mencari gambar utama dari metadata halaman…")
                 val html = readLimitedHtml(pageInput, pageBody.contentLength(), coroutineContext)
@@ -108,7 +108,7 @@ internal class ImageLinkDownloader(
                             continue
                         }
                         chosen = stageImage(
-                            imageInput, imageResponse, imagePrefix, workDirectory, metadata.title,
+                            processId, imageInput, imageResponse, imagePrefix, workDirectory, metadata.title,
                             coroutineContext, onProgress
                         )
                         break
@@ -142,8 +142,10 @@ internal class ImageLinkDownloader(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: ImageLinkException) {
+            coroutineContext.ensureActive()
             throw error
         } catch (error: Exception) {
+            coroutineContext.ensureActive()
             throw ImageLinkException(
                 "Gambar belum berhasil disimpan. Pastikan tautan publik aktif, koneksi stabil, dan penyimpanan cukup.",
                 error
@@ -186,6 +188,7 @@ internal class ImageLinkDownloader(
             } catch (error: Exception) {
                 call.cancel()
                 activeCalls.remove(processId, call)
+                currentCoroutineContext().ensureActive()
                 if (error is UnknownHostException) {
                     throw ImageLinkException(
                         "Host gambar tidak dapat dijangkau atau DNS tidak menunjuk ke alamat publik.",
@@ -220,6 +223,7 @@ internal class ImageLinkDownloader(
     }
 
     private suspend fun stageImage(
+        processId: String,
         input: BufferedInputStream,
         response: OpenedResponse,
         prefix: ByteArray,
@@ -282,11 +286,12 @@ internal class ImageLinkDownloader(
                     return StagedImage(file, format, base + "." + format.extension)
                 } catch (error: Exception) {
                     file.delete()
+                    coroutineContext.ensureActive()
                     throw error
                 }
             }
         } finally {
-            closeResponse(response)
+            closeResponse(processId, response)
         }
     }
 
@@ -334,13 +339,9 @@ internal class ImageLinkDownloader(
 
     private fun closeResponse(processId: String, opened: OpenedResponse) {
         activeCalls.remove(processId, opened.call)
-        closeResponse(opened)
+        opened.response.close()
     }
 
-    private fun closeResponse(opened: OpenedResponse) {
-        opened.response.close()
-        opened.call.cancel()
-    }
 
     private fun mediaType(value: String?): String = value.orEmpty().substringBefore(';').trim().lowercase(Locale.ROOT)
 
