@@ -296,6 +296,16 @@ class ConverterViewModel(
         }
     }
 
+    /**
+     * Waits for any active automatic support update, or starts one when due, before a remote
+     * yt-dlp extraction. A failed optional update is contained by autoUpdateYtDlpIfDue() and
+     * leaves the previously installed script in place.
+     */
+    private suspend fun awaitYtDlpUpdateIfDue() {
+        autoUpdateYtDlpIfDue()
+        autoUpdateJob?.join()
+    }
+
     fun updateYtDlp() {
         val snapshot = _uiState.value
         if (snapshot.isBusy || snapshot.isUpdatingYtDlp || snapshot.isAutoUpdatingYtDlp) return
@@ -479,6 +489,27 @@ class ConverterViewModel(
                                 )
                             }
                         }
+                    }
+                }
+
+                // A remote link must not race the stable yt-dlp updater. On a fresh install
+                // this job can still be fetching a verified script when extraction would otherwise
+                // start with the bundled (older) version. Join the due update before launching yt-dlp.
+                if (snapshot.inputSource == InputSource.LINK && snapshot.mode != OutputMode.IMAGE) {
+                    _uiState.update {
+                        it.copy(
+                            isProgressIndeterminate = true,
+                            progress = 0f,
+                            stageMessage = "Memeriksa dukungan situs media terbaru…",
+                            errorMessage = null
+                        )
+                    }
+                    awaitYtDlpUpdateIfDue()
+                    _uiState.update {
+                        it.copy(
+                            isProgressIndeterminate = false,
+                            stageMessage = "Menghubungkan ke $sourceLabel…"
+                        )
                     }
                 }
 
