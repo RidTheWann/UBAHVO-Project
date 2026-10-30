@@ -282,6 +282,7 @@ mod tests {
             "https://youtube.com/shorts/abcdefghijk",
             "https://vimeo.com/123456789",
             "https://www.tiktok.com/@creator/video/1234567890",
+            "https://vt.tiktok.com/ZSgWpeQKW/",
             "https://www.instagram.com/reel/C0ffee12345/",
             "https://soundcloud.com/artist/track-name",
             "https://x.com/creator/status/1234567890123456789",

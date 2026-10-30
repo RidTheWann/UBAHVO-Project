@@ -14,6 +14,7 @@ class MediaUrlValidatorTest {
             "https://vimeo.com/123456789",
             "https://www.tiktok.com/@creator/video/1234567890",
             "https://vm.tiktok.com/ZMabc123/",
+            "https://vt.tiktok.com/ZSgWpeQKW/",
             "https://www.instagram.com/reel/C0ffee12345/",
             "https://instagr.am/p/C0ffee12345/",
             "https://www.facebook.com/watch/?v=123456789",

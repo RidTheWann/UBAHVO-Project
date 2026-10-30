@@ -221,10 +221,9 @@ class ConverterViewModel(
     }
 
     /**
-     * Keep supported video links current automatically without making app launch or the Save
-     * action wait for a network request. Successful checks run daily; failures retry after six
-     * hours. The updater installs verified bytes atomically, so an active download keeps using a
-     * complete script even if the next version is installed in the background.
+     * Keep supported video links current without blocking app launch. Successful checks run daily
+     * and failures retry after six hours; a due check is awaited at the remote-download boundary
+     * so the first extraction cannot race the updater. The verified script is installed atomically.
      */
     private fun autoUpdateYtDlpIfDue() {
         if (!application.engineReady || autoUpdateJob?.isActive == true) return
@@ -294,6 +293,16 @@ class ConverterViewModel(
                 autoUpdateJob = null
             }
         }
+    }
+
+    /**
+     * Waits for any active automatic support update, or starts one when due, before a remote
+     * yt-dlp extraction. A failed optional update is contained by autoUpdateYtDlpIfDue() and
+     * leaves the previously installed script in place.
+     */
+    private suspend fun awaitYtDlpUpdateIfDue() {
+        autoUpdateYtDlpIfDue()
+        autoUpdateJob?.join()
     }
 
     fun updateYtDlp() {
@@ -479,6 +488,27 @@ class ConverterViewModel(
                                 )
                             }
                         }
+                    }
+                }
+
+                // A remote link must not race the stable yt-dlp updater. On a fresh install
+                // this job can still be fetching a verified script when extraction would otherwise
+                // start with the bundled (older) version. Join the due update before launching yt-dlp.
+                if (snapshot.inputSource == InputSource.LINK && snapshot.mode != OutputMode.IMAGE) {
+                    _uiState.update {
+                        it.copy(
+                            isProgressIndeterminate = true,
+                            progress = 0f,
+                            stageMessage = "Memeriksa dukungan situs media terbaru…",
+                            errorMessage = null
+                        )
+                    }
+                    awaitYtDlpUpdateIfDue()
+                    _uiState.update {
+                        it.copy(
+                            isProgressIndeterminate = false,
+                            stageMessage = "Menghubungkan ke $sourceLabel…"
+                        )
                     }
                 }
 
