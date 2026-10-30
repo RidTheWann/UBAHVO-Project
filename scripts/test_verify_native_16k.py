@@ -77,7 +77,7 @@ Program Headers:
 
 
     def test_resolves_nested_unix_symlink_to_elf_target(self):
-        fake_elf = b"\\x7fELF" + (b"\\x00" * 60)
+        fake_elf = b"\x7fELF" + (b"\x00" * 60)
         nested = io.BytesIO()
         with zipfile.ZipFile(nested, "w", zipfile.ZIP_DEFLATED) as archive:
             archive.writestr("usr/lib/libswscale.so.8.1.100", fake_elf)
@@ -93,7 +93,7 @@ Program Headers:
 
             aligned = CompletedProcess(
                 args=[], returncode=0,
-                stdout="LOAD 0x000000 0x000000 0x000000 0x001000 0x001000 R E 0x4000\\n",
+                stdout="LOAD 0x000000 0x000000 0x000000 0x001000 0x001000 R E 0x4000\n",
                 stderr="",
             )
             with patch("verify_native_16k.subprocess.run", return_value=aligned) as run:
