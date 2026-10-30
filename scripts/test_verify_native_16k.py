@@ -110,7 +110,7 @@ Program Headers:
             link = zipfile.ZipInfo("usr/lib/libunsafe.so")
             link.create_system = 3
             link.external_attr = (stat.S_IFLNK | 0o777) << 16
-            archive.writestr(link, "../../outside.so")
+            archive.writestr(link, "../../../outside.so")
 
         with tempfile.TemporaryDirectory() as directory:
             artifact_path = Path(directory) / "test.apk"
