@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import argparse
 import io
+import posixpath
+import stat
 import subprocess
 import sys
 import tempfile
@@ -82,6 +84,44 @@ def _inspect_elf(payload: bytes, label: str, readelf: str) -> ElfReport:
     return ElfReport(label, parse_load_alignments(result.stdout))
 
 
+def _inspect_archive_entry(
+    archive: zipfile.ZipFile,
+    entry_name: str,
+    label: str,
+    readelf: str,
+    visited: frozenset[str] = frozenset(),
+) -> list[ElfReport]:
+    """Inspect one .so entry, resolving ZIP-stored Unix symlinks safely."""
+    if entry_name in visited:
+        raise ValueError(f"Symlink cycle in native archive: {label}")
+
+    try:
+        entry = archive.getinfo(entry_name)
+    except KeyError as error:
+        raise ValueError(f"Native archive entry is missing: {label}") from error
+
+    mode = (entry.external_attr >> 16) & 0xFFFF
+    if stat.S_ISLNK(mode):
+        try:
+            target = archive.read(entry).decode("utf-8").strip()
+        except UnicodeDecodeError as error:
+            raise ValueError(f"Native archive symlink target is not UTF-8: {label}") from error
+        if not target or posixpath.isabs(target) or "\\" in target:
+            raise ValueError(f"Unsafe native archive symlink target: {label}")
+        resolved = posixpath.normpath(posixpath.join(posixpath.dirname(entry_name), target))
+        if resolved in ("", ".", "..") or resolved.startswith("../") or posixpath.isabs(resolved):
+            raise ValueError(f"Native archive symlink escapes its root: {label}")
+        next_label = f"{label} -> {resolved}"
+        return _inspect_archive_entry(
+            archive, resolved, next_label, readelf, visited | {entry_name}
+        )
+
+    payload = archive.read(entry)
+    if _is_zip(payload):
+        return _inspect_nested_zip(payload, label, readelf)
+    return [_inspect_elf(payload, label, readelf)]
+
+
 def _inspect_nested_zip(
     payload: bytes,
     label: str,
@@ -97,12 +137,10 @@ def _inspect_nested_zip(
             for entry in archive.infolist():
                 if entry.is_dir() or not entry.filename.lower().endswith(".so"):
                     continue
-                child = archive.read(entry)
                 child_label = f"{label}!{entry.filename}"
-                if _is_zip(child):
-                    reports.extend(_inspect_nested_zip(child, child_label, readelf, depth + 1))
-                else:
-                    reports.append(_inspect_elf(child, child_label, readelf))
+                reports.extend(
+                    _inspect_archive_entry(archive, entry.filename, child_label, readelf)
+                )
     except zipfile.BadZipFile as error:
         raise ValueError(f"Invalid nested native ZIP archive: {label}") from error
     return reports
@@ -119,12 +157,10 @@ def inspect_artifact(path: Path, readelf: str) -> list[ElfReport]:
             for entry in artifact.infolist():
                 if entry.is_dir() or not entry.filename.lower().endswith(".so"):
                     continue
-                payload = artifact.read(entry)
                 label = f"{path.name}!{entry.filename}"
-                if _is_zip(payload):
-                    reports.extend(_inspect_nested_zip(payload, label, readelf))
-                else:
-                    reports.append(_inspect_elf(payload, label, readelf))
+                reports.extend(
+                    _inspect_archive_entry(artifact, entry.filename, label, readelf)
+                )
     except zipfile.BadZipFile as error:
         raise ValueError(f"Android artifact is not a valid ZIP archive: {path}") from error
 
